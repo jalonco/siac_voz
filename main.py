@@ -81,22 +81,30 @@ async def media_stream(websocket: WebSocket):
     logger.info("Twilio Media Stream connected")
     
     try:
-        # Twilio sends a 'start' event with stream metadata as the first message
-        message = await websocket.receive_text()
-        event = json.loads(message)
-        
-        if event.get("event") == "start":
-            stream_sid = event["start"]["streamSid"]
-            logger.info(f"Stream started: {stream_sid}")
+        # Loop until we get the 'start' event
+        while True:
+            message = await websocket.receive_text()
+            event = json.loads(message)
             
-            # Start the Pipecat bot pipeline
-            # We pass the websocket and the session ID
-            await run_bot(websocket, stream_sid)
-            
-        elif event.get("event") == "stop":
-            logger.info("Stream stopped by Twilio (initial handshake)")
-        else:
-            logger.warning(f"Received unexpected event type: {event.get('event')}")
+            if event.get("event") == "start":
+                stream_sid = event["start"]["streamSid"]
+                logger.info(f"Stream started: {stream_sid}")
+                
+                # Start the Pipecat bot pipeline
+                # This function will take over the websocket and run until the call ends
+                await run_bot(websocket, stream_sid)
+                break
+                
+            elif event.get("event") == "stop":
+                logger.info("Stream stopped by Twilio")
+                break
+                
+            elif event.get("event") == "connected":
+                logger.info("Twilio Media Stream connected event received")
+                continue
+                
+            else:
+                logger.warning(f"Received unexpected event type: {event.get('event')}")
 
     except WebSocketDisconnect:
         logger.info("WebSocket disconnected by client")
