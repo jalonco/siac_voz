@@ -1,8 +1,18 @@
+# --- Stage 1: Build Frontend ---
+FROM node:18-alpine as builder
+
+WORKDIR /app/frontend
+COPY frontend/package*.json ./
+RUN npm ci
+COPY frontend/ .
+RUN npm run build
+
+# --- Stage 2: Run Backend ---
 FROM python:3.10-slim
 
 WORKDIR /app
 
-# Install system dependencies for audio (Pipecat)
+# Install audio dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     portaudio19-dev \
@@ -10,18 +20,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements and install
+# Install Python deps
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
+# Copy Backend Code
 COPY . .
 
-# Environment variables should be passed at runtime
-ENV PORT=8765
+# Copy Built Frontend from Stage 1
+# We place it in /app/static (or wherever main.py expects it)
+COPY --from=builder /app/frontend/dist /app/static
 
-# Expose port
+ENV PORT=8765
 EXPOSE 8765
 
-# Run the application
 CMD ["python", "main.py"]

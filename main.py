@@ -1,7 +1,9 @@
 import json
 import uvicorn
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect, HTTPException
-from fastapi.responses import Response
+from fastapi.responses import Response, FileResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 from twilio.twiml.voice_response import VoiceResponse, Connect, Stream
 from twilio.rest import Client
 from loguru import logger
@@ -13,6 +15,16 @@ from bot import run_bot, settings
 load_dotenv()
 
 app = FastAPI()
+
+# Allow CORS for development
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 # Initialize Twilio Client
 twilio_client = Client(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
@@ -44,9 +56,15 @@ async def make_call(call_request: CallRequest):
         logger.error(f"Failed to make call: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# Mount static files (Frontend)
+# We mount it AFTER the API routes so API takes precedence
+import os
+if os.path.exists("static"):
+    app.mount("/", StaticFiles(directory="static", html=True), name="static")
 
 @app.post("/voice")
 async def voice_handler(request: Request):
+
     """
     Endpoint called by Twilio when a call comes in.
     Returns TwiML to connect the call to the Media Stream.
