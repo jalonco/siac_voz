@@ -1,5 +1,5 @@
 # --- Stage 1: Build Frontend ---
-FROM node:18-alpine as builder
+FROM node:20-alpine as builder
 
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
