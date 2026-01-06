@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: siac_voz
+    restart: unless-stopped
+    env_file:
+      - .env
+    expose:
+      - "8765"
+    networks:
+      - traefik-public
+    labels:
+      - "traefik.enable=true"
+
+      # Routers
+      - "traefik.http.routers.siac-voz.rule=Host(`voz.siac.com.co`)"
+      - "traefik.http.routers.siac-voz.entrypoints=websecure"
+      - "traefik.http.routers.siac-voz.tls=true"
+      - "traefik.http.routers.siac-voz.tls.certresolver=letsencrypt"
+
+      # Services
+      - "traefik.http.services.siac-voz.loadbalancer.server.port=8765"
+
+networks:
+  traefik-public:
+    external: true
