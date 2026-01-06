@@ -53,8 +53,13 @@ async def voice_handler(request: Request):
     """
     response = VoiceResponse()
     
-    # Dynamically determine the WebSocket URL based on the incoming request
-    ws_scheme = "wss" if request.url.scheme == "https" else "ws"
+    # Trust X-Forwarded-Proto header from Traefik
+    forwarded_proto = request.headers.get("x-forwarded-proto")
+    if forwarded_proto:
+        ws_scheme = "wss" if forwarded_proto == "https" else "ws"
+    else:
+        ws_scheme = "wss" if request.url.scheme == "https" else "ws"
+
     host = request.url.netloc
     stream_url = f"{ws_scheme}://{host}/media-stream"
     
