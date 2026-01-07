@@ -136,6 +136,17 @@ class RecordingWebSocket:
             pass
 
     async def send_text(self, data: str):
+        # Intercept outgoing text (AI/Server events) to capture AI audio
+        try:
+             # Fast JSON check - outgoing messages are often media
+            if 'media' in data: # Optimization to avoid parsing non-media messages fully if possible, but safer to parse
+                event = json.loads(data)
+                if event.get("event") == "media":
+                    payload = event["media"]["payload"]
+                    self._recorder.write_chunk(payload)
+        except Exception as e:
+            logger.error(f"Recording outgoing tap error: {e}")
+
         return await self._ws.send_text(data)
 
     async def receive_bytes(self) -> bytes:
