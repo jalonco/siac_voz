@@ -4,3 +4,4 @@ pipecat-ai[twilio,google,silero]
 python-dotenv
 pydantic-settings
 twilio
+google-cloud-storage

@@ -138,6 +138,10 @@ async def voice_handler(request: Request):
     
     return Response(content=str(response), media_type="application/xml")
 
+from recorder import CallRecorder, RecordingWebSocket
+
+# ... (existing code) ...
+
 @app.websocket("/media-stream")
 async def media_stream(websocket: WebSocket):
     """
@@ -145,6 +149,8 @@ async def media_stream(websocket: WebSocket):
     """
     await websocket.accept()
     logger.info("Twilio Media Stream connected")
+    
+    recorder = None
     
     try:
         # Loop until we get the 'start' event
@@ -157,9 +163,14 @@ async def media_stream(websocket: WebSocket):
                 call_sid = event["start"]["callSid"]
                 logger.info(f"Stream started: {stream_sid} for Call: {call_sid}")
                 
-                # Start the Pipecat bot pipeline
-                # This function will take over the websocket and run until the call ends
-                await run_bot(websocket, stream_sid, call_sid)
+                # Initialize Recorder
+                recorder = CallRecorder(call_sid)
+                
+                # Wrap WebSocket to intercept audio for recording
+                wrapped_ws = RecordingWebSocket(websocket, recorder)
+                
+                # Start the Pipecat bot pipeline with wrapped socket
+                await run_bot(wrapped_ws, stream_sid, call_sid)
                 break
                 
             elif event.get("event") == "stop":
