@@ -14,10 +14,16 @@ Si estás en el servidor de producción o en otro entorno y necesitas traer los 
 # 1. Traer los cambios del repositorio remoto
 git pull origin main
 
-# 2. Instalar nuevas dependencias (si requirements.txt cambió)
+# 2. Instalar nuevas dependencias del backend
 pip install -r requirements.txt
 
-# 3. Reiniciar el servicio (ejemplo manual)
+# 3. Construir el Frontend
+cd frontend
+npm install  # O "npm ci" para instalaciones más limpias
+npm run build
+cd ..
+
+# 4. Reiniciar el servicio (ejemplo manual)
 # Detén el proceso actual (Ctrl+C) y vuelve a ejecutar:
 python main.py
 ```

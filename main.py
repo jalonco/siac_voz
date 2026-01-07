@@ -58,6 +58,31 @@ async def make_call(call_request: CallRequest):
 
 
 
+@app.get("/calls")
+async def get_calls(limit: int = 20):
+    """
+    Fetch recent calls from Twilio log.
+    """
+    try:
+        calls = twilio_client.calls.list(limit=limit)
+        call_data = []
+        for c in calls:
+            call_data.append({
+                "sid": c.sid,
+                "status": c.status,
+                "duration": c.duration,
+                "start_time": str(c.start_time) if c.start_time else None,
+                "direction": c.direction,
+                "from": c.from_,
+                "to": c.to,
+                "price": str(c.price) if c.price else None,
+                "price_unit": c.price_unit,
+            })
+        return {"calls": call_data}
+    except Exception as e:
+        logger.error(f"Failed to fetch calls: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/voice")
 async def voice_handler(request: Request):
 
@@ -130,8 +155,14 @@ async def media_stream(websocket: WebSocket):
 
 # Mount static files (Frontend)
 # We mount it at the end to avoid shadowing API routes
+# Mount static files (Frontend)
+# We mount it at the end to avoid shadowing API routes
 import os
-if os.path.exists("static"):
+
+# Check if frontend/dist exists (Vite build output)
+if os.path.exists("frontend/dist"):
+    app.mount("/", StaticFiles(directory="frontend/dist", html=True), name="frontend")
+elif os.path.exists("static"):
     app.mount("/", StaticFiles(directory="static", html=True), name="static")
 
 
