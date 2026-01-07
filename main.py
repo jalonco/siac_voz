@@ -56,11 +56,7 @@ async def make_call(call_request: CallRequest):
         logger.error(f"Failed to make call: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# Mount static files (Frontend)
-# We mount it AFTER the API routes so API takes precedence
-import os
-if os.path.exists("static"):
-    app.mount("/", StaticFiles(directory="static", html=True), name="static")
+
 
 @app.post("/voice")
 async def voice_handler(request: Request):
@@ -130,6 +126,13 @@ async def media_stream(websocket: WebSocket):
         logger.error(f"Error in media stream: {e}")
     finally:
         logger.info("Media stream connection closed")
+
+# Mount static files (Frontend)
+# We mount it at the end to avoid shadowing API routes
+import os
+if os.path.exists("static"):
+    app.mount("/", StaticFiles(directory="static", html=True), name="static")
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=settings.PORT)
