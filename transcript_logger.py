@@ -10,8 +10,8 @@ from pipecat.frames.frames import (
     TranscriptionFrame, 
     TextFrame, 
     EndFrame, 
-    LLMResponseStartFrame, 
-    LLMResponseEndFrame,
+    LLMFullResponseStartFrame, 
+    LLMFullResponseEndFrame,
     UserStartedSpeakingFrame,
     UserStoppedSpeakingFrame
 )
@@ -51,7 +51,7 @@ class TranscriptLogger(FrameProcessor):
         elif isinstance(frame, TextFrame):
             self.ai_buffer += frame.text
 
-        elif isinstance(frame, LLMResponseEndFrame):
+        elif isinstance(frame, LLMFullResponseEndFrame):
             # Flush buffer on end of response
             if self.ai_buffer.strip():
                 self._flush_ai_buffer(timestamp)
