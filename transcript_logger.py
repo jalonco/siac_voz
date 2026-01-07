@@ -11,6 +11,7 @@ from pipecat.frames.frames import (
     TextFrame, 
     EndFrame, 
     LLMFullResponseStartFrame, 
+    LLMFullResponseEndFrame, # <--- Restored
     InterimTranscriptionFrame, # Added
     UserStartedSpeakingFrame,
     UserStoppedSpeakingFrame
