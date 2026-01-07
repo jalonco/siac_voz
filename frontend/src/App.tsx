@@ -24,16 +24,23 @@ function App() {
   const [status, setStatus] = useState<'idle' | 'calling' | 'connected' | 'error'>('idle');
   // Removed unused callSid
   const [errorMsg, setErrorMsg] = useState('');
-  const [activeTab, setActiveTab] = useState<'dialer' | 'analytics'>('dialer');
+  const [activeTab, setActiveTab] = useState<'dialer' | 'analytics' | 'config'>('dialer');
 
   // Analytics State
   const [calls, setCalls] = useState<CallLog[]>([]);
   const [loadingCalls, setLoadingCalls] = useState(false);
 
+  // Config State
+  const [config, setConfig] = useState({ system_prompt: '', voice_id: 'Charon' });
+  const [availableVoices, setAvailableVoices] = useState<string[]>([]);
+  const [savingConfig, setSavingConfig] = useState(false);
+
   // Fetch calls on mount and when tab changes to analytics
   useEffect(() => {
     if (activeTab === 'analytics') {
       fetchCalls();
+    } else if (activeTab === 'config') {
+      fetchConfig();
     }
   }, [activeTab]);
 
@@ -46,6 +53,29 @@ function App() {
       console.error("Failed to fetch calls", err);
     } finally {
       setLoadingCalls(false);
+    }
+  };
+
+  const fetchConfig = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/agent-config`);
+      setConfig(res.data.config);
+      setAvailableVoices(res.data.available_voices);
+    } catch (err) {
+      console.error("Failed to fetch config", err);
+    }
+  }
+
+  const saveConfig = async () => {
+    setSavingConfig(true);
+    try {
+      await axios.post(`${API_URL}/agent-config`, config);
+      alert('Configuration saved!');
+    } catch (err) {
+      console.error("Failed to save config", err);
+      alert('Failed to save configuration.');
+    } finally {
+      setSavingConfig(false);
     }
   };
 
@@ -127,6 +157,15 @@ function App() {
               )}
             >
               Analytics
+            </button>
+            <button
+              onClick={() => setActiveTab('config')}
+              className={clsx(
+                "px-4 py-1.5 rounded-md text-sm font-medium transition-all",
+                activeTab === 'config' ? "bg-slate-700 text-white shadow-sm" : "text-slate-400 hover:text-white"
+              )}
+            >
+              Config
             </button>
           </div>
         </div>
@@ -325,6 +364,52 @@ function App() {
                     </tbody>
                   </table>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'config' && (
+          <div className="flex flex-col items-center justify-center min-h-[60vh]">
+            <div className="max-w-2xl w-full glass-panel rounded-3xl p-8 border border-slate-700/50 relative">
+              <div className="text-center mb-8">
+                <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
+                  Agent Configuration
+                </h1>
+                <p className="text-slate-500 mt-2">Customize the AI Persona and Voice</p>
+              </div>
+
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-medium text-slate-400 mb-2">Voice Model</label>
+                  <select
+                    className="w-full bg-slate-900/50 border border-slate-700 rounded-lg p-3 text-white focus:outline-none focus:border-cyan-500"
+                    value={config.voice_id}
+                    onChange={(e) => setConfig({ ...config, voice_id: e.target.value })}
+                  >
+                    {availableVoices.map(voice => (
+                      <option key={voice} value={voice}>{voice}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-400 mb-2">System Prompt</label>
+                  <textarea
+                    className="w-full h-64 bg-slate-900/50 border border-slate-700 rounded-lg p-3 text-white focus:outline-none focus:border-cyan-500 font-mono text-sm"
+                    value={config.system_prompt}
+                    onChange={(e) => setConfig({ ...config, system_prompt: e.target.value })}
+                  />
+                </div>
+
+                <button
+                  onClick={saveConfig}
+                  disabled={savingConfig}
+                  className="w-full btn-primary h-12 flex items-center justify-center gap-2"
+                >
+                  {savingConfig ? <Loader2 className="w-5 h-5 animate-spin" /> : <span>Save Configuration</span>}
+                </button>
+
               </div>
             </div>
           </div>

@@ -11,10 +11,19 @@ from dotenv import load_dotenv
 from pydantic import BaseModel
 
 from bot import run_bot, settings
+from settings_manager import SettingsManager
 
 load_dotenv()
 
 app = FastAPI()
+
+# Data Models
+class AgentConfig(BaseModel):
+    system_prompt: str
+    voice_id: str
+
+class CallRequest(BaseModel):
+    to_number: str
 
 # Allow CORS for development
 app.add_middleware(
@@ -26,11 +35,29 @@ app.add_middleware(
 )
 
 
+@app.get("/agent-config")
+async def get_agent_config():
+    """Get current agent configuration and available voices."""
+    settings = SettingsManager.load_settings()
+    return {
+        "config": settings,
+        "available_voices": SettingsManager.get_available_voices()
+    }
+
+@app.post("/agent-config")
+async def update_agent_config(config: AgentConfig):
+    """Update agent configuration."""
+    current_settings = SettingsManager.load_settings()
+    current_settings["system_prompt"] = config.system_prompt
+    current_settings["voice_id"] = config.voice_id
+    SettingsManager.save_settings(current_settings)
+    return {"status": "updated", "config": current_settings}
+
+
 # Initialize Twilio Client
 twilio_client = Client(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
 
-class CallRequest(BaseModel):
-    to_number: str
+
 
 @app.post("/call")
 async def make_call(call_request: CallRequest):
