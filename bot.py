@@ -18,6 +18,7 @@ from pipecat.transports.network.fastapi_websocket import (
     FastAPIWebsocketTransport,
 )
 from settings_manager import SettingsManager
+from transcript_logger import TranscriptLogger
 
 logger.remove()
 logger.add(sys.stderr, level="INFO")
@@ -77,10 +78,6 @@ async def run_bot(websocket: WebSocket, stream_sid: str, call_sid: str):
     # The pipeline structure for Gemini Multimodal:
     # transport.input() -> llm -> transport.output()
     
-from transcript_logger import TranscriptLogger
-
-# ...
-
     # Initialize Transcript Logger
     transcript_logger = TranscriptLogger(call_sid)
 
