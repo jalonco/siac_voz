@@ -53,8 +53,9 @@ class TranscriptLogger(FrameProcessor):
         await self.push_frame(frame, direction)
 
     async def upload_history(self):
+        logger.info(f"Attempting to upload history. Count: {len(self.history)}")
         if not self.history:
-            logger.info("No transcript history to upload.")
+            logger.info("No transcript history to upload. (Empty list)")
             return
 
         try:
