@@ -14,17 +14,23 @@ BUCKET_NAME = "asistente-siac-voz-logs"
 class CallRecorder:
     def __init__(self, call_sid: str):
         self.call_sid = call_sid
-        self.temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
-        self.wav_file = wave.open(self.temp_file.name, 'wb')
-        
-        # Twilio Audio is 8000Hz, Mono, 8-bit Mulaw
-        # We convert to 16-bit Linear PCM for standard WAV compatibility
-        self.wav_file.setnchannels(1)
-        self.wav_file.setsampwidth(2) # 16-bit = 2 bytes
-        self.wav_file.setframerate(8000)
-        
+        self.temp_file = None
+        self.wav_file = None
         self.closed = False
-        logger.info(f"Recorder started for {call_sid}")
+        
+        try:
+            self.temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
+            self.wav_file = wave.open(self.temp_file.name, 'wb')
+            
+            # Twilio Audio is 8000Hz, Mono, 8-bit Mulaw -> 16-bit PCM
+            self.wav_file.setnchannels(1)
+            self.wav_file.setsampwidth(2) # 16-bit = 2 bytes
+            self.wav_file.setframerate(8000)
+            
+            logger.info(f"Recorder started for {call_sid} at {self.temp_file.name}")
+        except Exception as e:
+            logger.error(f"Failed to initialize recorder: {e}")
+            self.closed = True # Disable recording if init fails
 
     def write_chunk(self, payload: str):
         """
@@ -120,6 +126,15 @@ class RecordingWebSocket:
 
         return data
 
+    async def iter_text(self):
+        # Implement iter_text to ensure receive_text is called (and thus intercepted)
+        try:
+            while True:
+                yield await self.receive_text()
+        except Exception as e:
+            # WebSocketDisconnect is expected at end of call
+            pass
+
     async def send_text(self, data: str):
         return await self._ws.send_text(data)
 
@@ -128,6 +143,10 @@ class RecordingWebSocket:
 
     async def send_bytes(self, data: bytes):
         return await self._ws.send_bytes(data)
+
+    async def iter_bytes(self):
+        async for data in self._ws.iter_bytes():
+            yield data
 
     # Proxy other methods if needed, but Pipecat mostly uses receive_text/send_text for Twilio
     def __getattr__(self, name):
