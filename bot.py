@@ -77,10 +77,18 @@ async def run_bot(websocket: WebSocket, stream_sid: str, call_sid: str):
     # The pipeline structure for Gemini Multimodal:
     # transport.input() -> llm -> transport.output()
     
+from transcript_logger import TranscriptLogger
+
+# ...
+
+    # Initialize Transcript Logger
+    transcript_logger = TranscriptLogger(call_sid)
+
     pipeline = Pipeline(
         [
             transport.input(),
             llm,
+            transcript_logger, # Logs frames from LLM (content) and user (transcriptions)
             transport.output(),
         ]
     )
