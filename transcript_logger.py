@@ -1,6 +1,6 @@
-import os
 import json
 import datetime
+import asyncio
 from loguru import logger
 from google.cloud import storage
 
@@ -149,11 +149,12 @@ class TranscriptLogger(FrameProcessor):
                 
                 logger.info(f"Uploading transcript to gs://{BUCKET_NAME}/{blob_name}...")
                 
-                # We reuse the logic from recorder, but simpler here
-                storage_client = storage.Client.from_service_account_json(KEY_FILE)
-                bucket = storage_client.bucket(BUCKET_NAME)
-                blob = bucket.blob(blob_name)
-                blob.upload_from_string(json_content, content_type='application/json')
+                # Use asyncio.to_thread to unblock event loop
+                await asyncio.to_thread(
+                    self._upload_string, 
+                    json_content, 
+                    blob_name
+                )
                 
                 logger.info("Transcript upload complete.")
             else:
@@ -161,3 +162,9 @@ class TranscriptLogger(FrameProcessor):
                 
         except Exception as e:
             logger.error(f"Failed to upload transcript: {e}")
+
+    def _upload_string(self, content: str, blob_name: str):
+        storage_client = storage.Client.from_service_account_json(KEY_FILE)
+        bucket = storage_client.bucket(BUCKET_NAME)
+        blob = bucket.blob(blob_name)
+        blob.upload_from_string(content, content_type='application/json')

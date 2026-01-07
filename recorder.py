@@ -1,11 +1,10 @@
-import os
 import wave
-import audioop
-import base64
 import tempfile
 import datetime
-from google.cloud import storage
+import asyncio # Added
+from typing import Optional
 from loguru import logger
+from google.cloud import storage
 
 # Constants
 KEY_FILE = "mundimotos-481115-c652dd31ca7c.json"
@@ -101,7 +100,7 @@ class RecordingWebSocket:
         return await self._ws.accept(*args, **kwargs)
 
     async def close(self, *args, **kwargs):
-        self._recorder.stop_and_upload()
+        await self._recorder.stop_and_upload_async()
         return await self._ws.close(*args, **kwargs)
 
     async def receive_text(self) -> str:
@@ -118,7 +117,7 @@ class RecordingWebSocket:
                 payload = event["media"]["payload"]
                 self._recorder.write_chunk(payload)
             elif event_type == "stop":
-                self._recorder.stop_and_upload()
+                await self._recorder.stop_and_upload_async()
             
         except Exception as e:
             # Don't let recording errors kill the call
