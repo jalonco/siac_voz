@@ -1,7 +1,9 @@
 import wave
+import audioop # Restored
+import base64 # Restored
 import tempfile
 import datetime
-import asyncio # Added
+import asyncio
 from typing import Optional
 from loguru import logger
 from google.cloud import storage
@@ -50,9 +52,9 @@ class CallRecorder:
         except Exception as e:
             logger.error(f"Error writing chunk: {e}")
 
-    def stop_and_upload(self):
+    async def stop_and_upload_async(self):
         """
-        Closes the WAV file and uploads to GCS.
+        Closes the WAV file and uploads to GCS (Non-blocking).
         """
         if self.closed: return
         
@@ -63,26 +65,33 @@ class CallRecorder:
             
             # Construct GCS Path: grabaciones/YYYY-MM-DD/{call_sid}.wav
             date_str = datetime.date.today().isoformat()
-            blob_name = f"grabaciones/{date_str}/{self.call_sid}.wav"
+            target_path = f"grabaciones/{date_str}/{self.call_sid}.wav"
+            local_path = self.temp_file.name
             
-            # Initialise Client with specific JSON key
+            logger.info(f"Uploading recording to gs://{BUCKET_NAME}/{target_path}...")
+            
+            # Offload blocking GCS upload to thread
             if os.path.exists(KEY_FILE):
-                storage_client = storage.Client.from_service_account_json(KEY_FILE)
-                bucket = storage_client.bucket(BUCKET_NAME)
-                blob = bucket.blob(blob_name)
-                
-                logger.info(f"Uploading recording to gs://{BUCKET_NAME}/{blob_name}...")
-                blob.upload_from_filename(self.temp_file.name, content_type='audio/wav')
+                await asyncio.to_thread(self._upload_file, local_path, target_path)
                 logger.info("Upload complete.")
             else:
-                logger.error(f"GCS Key file not found: {KEY_FILE}. Recording not uploaded.")
-
+                logger.error(f"GCS Key file not found: {KEY_FILE}")
+            
         except Exception as e:
             logger.error(f"Failed to upload recording: {e}")
         finally:
             # Cleanup temp file
             if os.path.exists(self.temp_file.name):
-                os.remove(self.temp_file.name)
+                try:
+                    os.remove(self.temp_file.name)
+                except:
+                    pass
+
+    def _upload_file(self, local_path, target_path):
+         storage_client = storage.Client.from_service_account_json(KEY_FILE)
+         bucket = storage_client.bucket(BUCKET_NAME)
+         blob = bucket.blob(target_path)
+         blob.upload_from_filename(local_path, content_type='audio/wav')
 
 from fastapi import WebSocket
 import json
