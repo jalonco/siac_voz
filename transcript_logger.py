@@ -11,10 +11,11 @@ from pipecat.frames.frames import (
     TextFrame, 
     EndFrame, 
     LLMFullResponseStartFrame, 
-    LLMFullResponseEndFrame,
+    InterimTranscriptionFrame, # Added
     UserStartedSpeakingFrame,
     UserStoppedSpeakingFrame
 )
+import re # For thought filtering
 
 # Constants
 KEY_FILE = "mundimotos-481115-c652dd31ca7c.json"
@@ -32,20 +33,23 @@ class TranscriptLogger(FrameProcessor):
         await super().process_frame(frame, direction)
         
         # DEBUG: Log every frame type to understand flow
-        # logger.info(f"Frame received: {type(frame).__name__}") 
+        logger.info(f"Frame received: {type(frame).__name__}") 
 
         timestamp = datetime.datetime.now().isoformat()
         
         # 1. User Transcription
-        if isinstance(frame, TranscriptionFrame):
-            logger.info(f"CAPTURED TRANSCRIPTION: {frame.text}") # Debug log
-            entry = {
-                "timestamp": timestamp,
-                "role": "user" if getattr(frame, "user_id", "user") != "assistant" else "assistant",
-                "content": frame.text,
-                "type": "transcription"
-            }
-            self.history.append(entry)
+        if isinstance(frame, (TranscriptionFrame, InterimTranscriptionFrame)):
+            logger.info(f"CAPTURED TRANSCRIPTION ({type(frame).__name__}): {frame.text}") # Debug log
+            
+            # Only log final transcriptions to history to avoid noise, or log all for now to debug
+            if isinstance(frame, TranscriptionFrame):
+                entry = {
+                    "timestamp": timestamp,
+                    "role": "user" if getattr(frame, "user_id", "user") != "assistant" else "assistant",
+                    "content": frame.text,
+                    "type": "transcription"
+                }
+                self.history.append(entry)
 
         # 2. AI Text Aggregation
         elif isinstance(frame, TextFrame):
@@ -73,21 +77,51 @@ class TranscriptLogger(FrameProcessor):
             return
 
         # Attempt to separate "Thought" from "Speech"
-        # Heuristic: Thoughts often start with ** and end with ** or newline logic in Gemini 2.0 Flash
-        # For now, we'll log it as mixed but clean it up if possible.
-        # Simple heuristic: If it starts with **, it might be a thought block.
+        # Removing thought blocks that look like **Header**\n\nContent...
+        # Or simple **Thoughts** style.
+        # Regex to remove blocks starting with ** and ending with newline or ** (if it's a inline thought?)
+        # Based on user input: "**Initiating The Interaction**\n\nI've established... ....\n\n\n"
+        # Since the model output seems to put thoughts *before* speech, we can try to split.
         
-        # We will split strictly if we see double-newlines separating distinct blocks
-        # or just log it all as "text" for now, but aggregated.
+        # Strategy: Remove lines starting with ** if they seem to be headers, and following lines until we hit "Normal text"?
+        # Actually, simpler: Remove content matching `\*\*.*?\*\*(\n\n)?` or similar.
+        # The user JSON showed: `**Initiating The Interaction**\n\nI've established...`
+        # It seems the entire buffer MIGHT be a thought if it's just thought? 
+        # Or does the TextFrame stream contain BOTH thought and speech?
+        # The JSON showed separate entries for thoughts in the *old* logic? No, the user provided JSON showed:
+        # { "content": "**Initiating...**\n\n..." } -> ONE entry.
+        # Then { "content": "Hola..." } -> ANOTHER entry.
+        # This implies the Model emitted a Thought block, then maybe a pause/break (EndFrame?), then speech?
+        # If they are separate LLM responses, we need to detect if the *entire* buffer is a thought.
         
+        # Rule: If text starts with ** and has no "speech" indicators (difficult), mark as thought.
+        # But wait, looking at the user's json again:
+        # Entry 1: **Initiating...**\n\nI've established... (Type: text)
+        # Entry 2: Hola, buenas (Type: text)
+        
+        # If Gemini sends Thoughts as a separate Turn, we can filter it out by checking if it starts with **.
+        
+        is_thought = False
+        if full_text.startswith("**") and ("**" in full_text[2:] or "\n" in full_text):
+             # Likely a thought block.
+             # We can log it as 'thought' type or skip it.
+             # User wants to clean it. Let's skip it OR log as type="thought" so frontend can hide it.
+             is_thought = True
+        
+        if is_thought:
+            logger.info("Detected thought block. Marking as internal.")
+            type_field = "thought" # Custom type
+        else:
+            type_field = "text"
+
         entry = {
             "timestamp": timestamp,
             "role": "assistant",
             "content": full_text,
-            "type": "text"
+            "type": type_field 
         }
         self.history.append(entry)
-        logger.info(f"AI Response Logged (Length: {len(full_text)})")
+        logger.info(f"AI Response Logged (Length: {len(full_text)}, Type: {type_field})")
         
         self.ai_buffer = "" # Reset buffer
     
