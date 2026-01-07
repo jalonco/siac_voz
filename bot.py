@@ -7,9 +7,9 @@ from loguru import logger
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from pipecat.audio.vad.silero import SileroVADAnalyzer
-from pipecat.pipeline.pipeline import Pipeline, PipelineParams
+from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
-from pipecat.pipeline.task import PipelineTask
+from pipecat.pipeline.task import PipelineTask, PipelineParams
 from pipecat.processors.aggregators.openai_llm_context import OpenAILLMContext
 from pipecat.serializers.twilio import TwilioFrameSerializer
 from pipecat.services.gemini_multimodal_live.gemini import GeminiMultimodalLiveLLMService
