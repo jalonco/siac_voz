@@ -102,11 +102,12 @@ async def media_stream(websocket: WebSocket):
             
             if event.get("event") == "start":
                 stream_sid = event["start"]["streamSid"]
-                logger.info(f"Stream started: {stream_sid}")
+                call_sid = event["start"]["callSid"]
+                logger.info(f"Stream started: {stream_sid} for Call: {call_sid}")
                 
                 # Start the Pipecat bot pipeline
                 # This function will take over the websocket and run until the call ends
-                await run_bot(websocket, stream_sid)
+                await run_bot(websocket, stream_sid, call_sid)
                 break
                 
             elif event.get("event") == "stop":

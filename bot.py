@@ -33,7 +33,7 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
-async def run_bot(websocket: WebSocket, stream_sid: str):
+async def run_bot(websocket: WebSocket, stream_sid: str, call_sid: str):
     transport = FastAPIWebsocketTransport(
         websocket=websocket,
         params=FastAPIWebsocketParams(
@@ -42,7 +42,12 @@ async def run_bot(websocket: WebSocket, stream_sid: str):
             vad_enabled=True,
             vad_analyzer=SileroVADAnalyzer(),
             vad_audio_passthrough=True,
-            serializer=TwilioFrameSerializer(stream_sid=stream_sid),
+            serializer=TwilioFrameSerializer(
+                stream_sid=stream_sid,
+                call_sid=call_sid,
+                account_sid=settings.TWILIO_ACCOUNT_SID,
+                auth_token=settings.TWILIO_AUTH_TOKEN
+            ),
         ),
     )
 
