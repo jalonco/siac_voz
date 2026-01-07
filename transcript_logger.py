@@ -5,7 +5,16 @@ from loguru import logger
 from google.cloud import storage
 
 from pipecat.processors.frame_processor import FrameProcessor
-from pipecat.frames.frames import Frame, TranscriptionFrame, TextFrame, EndFrame
+from pipecat.frames.frames import (
+    Frame, 
+    TranscriptionFrame, 
+    TextFrame, 
+    EndFrame, 
+    LLMResponseStartFrame, 
+    LLMResponseEndFrame,
+    UserStartedSpeakingFrame,
+    UserStoppedSpeakingFrame
+)
 
 # Constants
 KEY_FILE = "mundimotos-481115-c652dd31ca7c.json"
@@ -16,43 +25,74 @@ class TranscriptLogger(FrameProcessor):
         super().__init__()
         self.call_sid = call_sid
         self.history = []
+        self.ai_buffer = "" # Buffer for aggregating AI tokens
         logger.info(f"TranscriptLogger started for {call_sid}")
 
     async def process_frame(self, frame: Frame, direction: int):
         await super().process_frame(frame, direction)
         
+        # DEBUG: Log every frame type to understand flow
+        # logger.info(f"Frame received: {type(frame).__name__}") 
+
         timestamp = datetime.datetime.now().isoformat()
         
-        # Capture Transcriptions (User Speech, and Model Speech if transcribed)
+        # 1. User Transcription
         if isinstance(frame, TranscriptionFrame):
+            logger.info(f"CAPTURED TRANSCRIPTION: {frame.text}") # Debug log
             entry = {
                 "timestamp": timestamp,
-                "role": "user" if getattr(frame, "user_id", "user") != "assistant" else "assistant", # Heuristic, check frame attrs
+                "role": "user" if getattr(frame, "user_id", "user") != "assistant" else "assistant",
                 "content": frame.text,
                 "type": "transcription"
             }
-            # Refine role logic: usually TranscriptionFrame is user. 
             self.history.append(entry)
-            logger.info(f"Transcript logged: {frame.text}")
 
-        # Capture Text Generation (AI Response text, if available)
+        # 2. AI Text Aggregation
         elif isinstance(frame, TextFrame):
-            entry = {
-                "timestamp": timestamp,
-                "role": "assistant",
-                "content": frame.text,
-                "type": "text"
-            }
-            self.history.append(entry)
-            logger.info(f"AI Text logged: {frame.text}")
-            
-        if isinstance(frame, EndFrame):
+            self.ai_buffer += frame.text
+
+        elif isinstance(frame, LLMResponseEndFrame):
+            # Flush buffer on end of response
+            if self.ai_buffer.strip():
+                self._flush_ai_buffer(timestamp)
+
+        # 3. Handle End of Call
+        elif isinstance(frame, EndFrame):
+            # Ensure any remaining buffer is flushed
+            if self.ai_buffer.strip():
+                self._flush_ai_buffer(timestamp)
             await self.upload_history()
             
         # Push frame downstream
         await self.push_frame(frame, direction)
 
+    def _flush_ai_buffer(self, timestamp: str):
+        """Processes and logs the buffered AI text."""
+        full_text = self.ai_buffer.strip()
+        if not full_text:
+            return
+
+        # Attempt to separate "Thought" from "Speech"
+        # Heuristic: Thoughts often start with ** and end with ** or newline logic in Gemini 2.0 Flash
+        # For now, we'll log it as mixed but clean it up if possible.
+        # Simple heuristic: If it starts with **, it might be a thought block.
+        
+        # We will split strictly if we see double-newlines separating distinct blocks
+        # or just log it all as "text" for now, but aggregated.
+        
+        entry = {
+            "timestamp": timestamp,
+            "role": "assistant",
+            "content": full_text,
+            "type": "text"
+        }
+        self.history.append(entry)
+        logger.info(f"AI Response Logged (Length: {len(full_text)})")
+        
+        self.ai_buffer = "" # Reset buffer
+    
     async def upload_history(self):
+
         logger.info(f"Attempting to upload history. Count: {len(self.history)}")
         if not self.history:
             logger.info("No transcript history to upload. (Empty list)")
