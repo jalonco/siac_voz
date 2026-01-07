@@ -73,7 +73,7 @@ async def get_calls(limit: int = 20):
                 "duration": c.duration,
                 "start_time": str(c.start_time) if c.start_time else None,
                 "direction": c.direction,
-                "from": c.from_,
+                "from": c._from,
                 "to": c.to,
                 "price": str(c.price) if c.price else None,
                 "price_unit": c.price_unit,
