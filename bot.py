@@ -35,7 +35,7 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
-async def run_bot(websocket: WebSocket, stream_sid: str, call_sid: str):
+async def run_bot(websocket: WebSocket, stream_sid: str, call_sid: str, call_variables: dict[str, str] = {}):
     transport = FastAPIWebsocketTransport(
         websocket=websocket,
         params=FastAPIWebsocketParams(
@@ -58,6 +58,16 @@ async def run_bot(websocket: WebSocket, stream_sid: str, call_sid: str):
     config = SettingsManager.load_settings()
     voice_id = config.get("voice_id", "Charon")
     system_instruction = config.get("system_prompt", "")
+    
+    # Inject Dynamic Variables
+    # Replace {{key}} with value
+    if call_variables:
+        logger.info(f"Injecting variables into prompt for {call_sid}: {call_variables}")
+        for key, value in call_variables.items():
+            placeholder = "{{" + key + "}}"
+            system_instruction = system_instruction.replace(placeholder, str(value))
+    else:
+        logger.info(f"No variables to inject for {call_sid}")
 
     llm = GeminiMultimodalLiveLLMService(
         api_key=settings.GOOGLE_API_KEY,

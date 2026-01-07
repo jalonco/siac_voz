@@ -17,13 +17,23 @@ load_dotenv()
 
 app = FastAPI()
 
+# In-memory store for call variables: {call_sid: variables_dict}
+call_context_store = {}
+
 # Data Models
+class VariableDefinition(BaseModel):
+    key: str
+    description: str
+    example: str
+
 class AgentConfig(BaseModel):
     system_prompt: str
     voice_id: str
+    variables: list[VariableDefinition] = []
 
 class CallRequest(BaseModel):
     to_number: str
+    variables: dict[str, str] = {}
 
 # Allow CORS for development
 app.add_middleware(
@@ -50,6 +60,8 @@ async def update_agent_config(config: AgentConfig):
     current_settings = SettingsManager.load_settings()
     current_settings["system_prompt"] = config.system_prompt
     current_settings["voice_id"] = config.voice_id
+    # Convert Pydantic models to dicts
+    current_settings["variables"] = [v.dict() for v in config.variables]
     SettingsManager.save_settings(current_settings)
     return {"status": "updated", "config": current_settings}
 
@@ -78,6 +90,12 @@ async def make_call(call_request: CallRequest):
             url=twiml_url
         )
         logger.info(f"Outbound call initiated: {call.sid}")
+        
+        # Store context (variables) for this call
+        if call_request.variables:
+            call_context_store[call.sid] = call_request.variables
+            logger.info(f"Stored context for {call.sid}: {call_request.variables}")
+            
         return {"message": "Call initiated", "call_sid": call.sid}
     except Exception as e:
         logger.error(f"Failed to make call: {e}")
@@ -166,11 +184,16 @@ async def media_stream(websocket: WebSocket):
                 # Initialize Recorder
                 recorder = CallRecorder(call_sid)
                 
+                # Retrieve Call Variables
+                call_variables = call_context_store.get(call_sid, {})
+                # Cleanup context to free memory? Or keep for debug?
+                # call_context_store.pop(call_sid, None) 
+                
                 # Wrap WebSocket to intercept audio for recording
                 wrapped_ws = RecordingWebSocket(websocket, recorder)
                 
-                # Start the Pipecat bot pipeline with wrapped socket
-                await run_bot(wrapped_ws, stream_sid, call_sid)
+                # Start the Pipecat bot pipeline with wrapped socket and variables
+                await run_bot(wrapped_ws, stream_sid, call_sid, call_variables)
                 break
                 
             elif event.get("event") == "stop":

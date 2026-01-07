@@ -24,7 +24,9 @@ DEFAULT_SETTINGS = {
     4.  **Manejo de Objeciones**: Si no tiene dinero, negocia una fecha próxima o un pago parcial.
     
     IMPORTANTE: Mantén las respuestas concisas.
-    """
+    IMPORTANTE: Mantén las respuestas concisas.
+    """,
+    "variables": [] # List of {key: str, description: str, example: str}
 }
 
 class SettingsManager:

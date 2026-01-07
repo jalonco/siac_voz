@@ -31,9 +31,25 @@ function App() {
   const [loadingCalls, setLoadingCalls] = useState(false);
 
   // Config State
-  const [config, setConfig] = useState({ system_prompt: '', voice_id: 'Charon' });
+  interface VariableDef {
+    key: string;
+    description: string;
+    example: string;
+  }
+
+  const [config, setConfig] = useState<{
+    system_prompt: string;
+    voice_id: string;
+    variables: VariableDef[];
+  }>({ system_prompt: '', voice_id: 'Charon', variables: [] });
+
   const [availableVoices, setAvailableVoices] = useState<string[]>([]);
   const [savingConfig, setSavingConfig] = useState(false);
+
+  // Call Variables State
+  const [variableInputs, setVariableInputs] = useState<Record<string, string>>({});
+
+
 
   // Fetch calls on mount and when tab changes to analytics
   useEffect(() => {
@@ -91,7 +107,8 @@ function App() {
       }
 
       await axios.post(`${API_URL}/call`, {
-        to_number: formattedNumber
+        to_number: formattedNumber,
+        variables: variableInputs
       });
 
       // We don't use callSid in UI currently, so just ignore response data
@@ -201,6 +218,29 @@ function App() {
                     disabled={status === 'calling'}
                   />
                 </div>
+
+                {/* Dynamic Variable Inputs */}
+                {config.variables && config.variables.length > 0 && (
+                  <div className="space-y-4">
+                    <div className="text-sm font-medium text-slate-400">Call Variables</div>
+                    {config.variables.map((v) => (
+                      <div key={v.key} className="relative group">
+                        <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+                          <Activity className="w-5 h-5 text-slate-500" />
+                        </div>
+                        <label className="block text-xs text-slate-500 mb-1 ml-1 pl-12">{v.description} ({v.key})</label>
+                        <input
+                          type="text"
+                          value={variableInputs[v.key] || ''}
+                          onChange={(e) => setVariableInputs({ ...variableInputs, [v.key]: e.target.value })}
+                          placeholder={v.example}
+                          className="input-field pl-12"
+                          disabled={status === 'calling'}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 <button
                   onClick={handleCall}
@@ -400,6 +440,71 @@ function App() {
                     value={config.system_prompt}
                     onChange={(e) => setConfig({ ...config, system_prompt: e.target.value })}
                   />
+                </div>
+
+                {/* Variables Configuration */}
+                <div className="space-y-4 border-t border-slate-700 pt-6">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-sm font-medium text-slate-400">Dynamic Variables</label>
+                    <button
+                      onClick={() => setConfig({
+                        ...config,
+                        variables: [...(config.variables || []), { key: '', description: '', example: '' }]
+                      })}
+                      className="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-md transition-colors text-cyan-400"
+                    >
+                      + Add Variable
+                    </button>
+                  </div>
+
+                  <div className="space-y-3">
+                    {config.variables && config.variables.map((variable, idx) => (
+                      <div key={idx} className="flex gap-2">
+                        <input
+                          placeholder="Key"
+                          className="w-1/4 bg-slate-900/50 border border-slate-700 rounded-lg p-2 text-sm text-white focus:border-cyan-500 outline-none"
+                          value={variable.key}
+                          onChange={(e) => {
+                            const newVars = [...config.variables];
+                            newVars[idx].key = e.target.value;
+                            setConfig({ ...config, variables: newVars });
+                          }}
+                        />
+                        <input
+                          placeholder="Description"
+                          className="flex-1 bg-slate-900/50 border border-slate-700 rounded-lg p-2 text-sm text-white focus:border-cyan-500 outline-none"
+                          value={variable.description}
+                          onChange={(e) => {
+                            const newVars = [...config.variables];
+                            newVars[idx].description = e.target.value;
+                            setConfig({ ...config, variables: newVars });
+                          }}
+                        />
+                        <input
+                          placeholder="Example"
+                          className="flex-1 bg-slate-900/50 border border-slate-700 rounded-lg p-2 text-sm text-white focus:border-cyan-500 outline-none"
+                          value={variable.example}
+                          onChange={(e) => {
+                            const newVars = [...config.variables];
+                            newVars[idx].example = e.target.value;
+                            setConfig({ ...config, variables: newVars });
+                          }}
+                        />
+                        <button
+                          onClick={() => {
+                            const newVars = config.variables.filter((_, i) => i !== idx);
+                            setConfig({ ...config, variables: newVars });
+                          }}
+                          className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg"
+                        >
+                          <Activity className="w-4 h-4 rotate-45" />
+                        </button>
+                      </div>
+                    ))}
+                    {(!config.variables || config.variables.length === 0) && (
+                      <p className="text-xs text-slate-600 italic">No variables defined. Add one to customize prompts (e.g. key="name" -> use &#123;&#123;name&#125;&#125; in prompt).</p>
+                    )}
+                  </div>
                 </div>
 
                 <button
