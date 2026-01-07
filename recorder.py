@@ -1,3 +1,4 @@
+import os
 import wave
 import audioop # Restored
 import base64 # Restored
