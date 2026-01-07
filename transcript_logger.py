@@ -46,13 +46,13 @@ class TranscriptLogger(FrameProcessor):
             self.history.append(entry)
             logger.info(f"AI Text logged: {frame.text}")
             
-        elif isinstance(frame, EndFrame):
-            await self._upload_history()
+        if isinstance(frame, EndFrame):
+            await self.upload_history()
             
         # Push frame downstream
         await self.push_frame(frame, direction)
 
-    async def _upload_history(self):
+    async def upload_history(self):
         if not self.history:
             logger.info("No transcript history to upload.")
             return

@@ -99,4 +99,8 @@ async def run_bot(websocket: WebSocket, stream_sid: str, call_sid: str):
 
     runner = PipelineRunner()
 
-    await runner.run(task)
+    try:
+        await runner.run(task)
+    finally:
+        # Ensure transcript is uploaded even if call ends abruptly
+        await transcript_logger.upload_history()
