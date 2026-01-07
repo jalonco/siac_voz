@@ -7,7 +7,7 @@ from loguru import logger
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from pipecat.audio.vad.silero import SileroVADAnalyzer
-from pipecat.pipeline.pipeline import Pipeline
+from pipecat.pipeline.pipeline import Pipeline, PipelineParams
 from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineTask
 from pipecat.processors.aggregators.openai_llm_context import OpenAILLMContext
@@ -81,7 +81,7 @@ async def run_bot(websocket: WebSocket, stream_sid: str, call_sid: str):
 
     task = PipelineTask(
         pipeline,
-        params=PipelineTask.Params(
+        params=PipelineParams(
             allow_interruptions=True, # Handles VAD interruptions automatically with the transport's VAD
         ),
     )
