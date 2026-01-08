@@ -18,6 +18,7 @@ scp -o BatchMode=yes -r frontend/dist root@srv1135658.hstgr.cloud:/opt/siac_voz/
 
 # 3. Deploy on VPS
 echo "🔄 Connecting to VPS to restart services..."
-ssh root@srv1135658.hstgr.cloud "cd /opt/siac_voz && git pull origin main && docker compose build && docker compose up -d"
+# Using reset --hard to ensure server matches repo and overwrites any untracked conflicting files
+ssh root@srv1135658.hstgr.cloud "cd /opt/siac_voz && git fetch origin main && git reset --hard origin/main && docker compose build && docker compose up -d"
 
 echo "✅ Deployment Complete!"
