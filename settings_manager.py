@@ -54,4 +54,70 @@ class SettingsManager:
 
     @staticmethod
     def get_available_voices():
-        return ["Puck", "Charon", "Kore", "Fenrir", "Aoede"]
+        voices = [
+            {"id": "Zephyr", "name": "Zephyr", "gender": "N/A", "description": "Brillante"},
+            {"id": "Kore", "name": "Kore", "gender": "Female", "description": "Firme"},
+            {"id": "Orus", "name": "Orus", "gender": "Male", "description": "Firme"},
+            {"id": "Autonoe", "name": "Autonoe", "gender": "Female", "description": "Brillante"},
+            {"id": "Umbriel", "name": "Umbriel", "gender": "Male", "description": "Tranquila"},
+            {"id": "Erinome", "name": "Erinome", "gender": "Female", "description": "Clara"},
+            {"id": "Laomedeia", "name": "Laomedeia", "gender": "Female", "description": "Optimista"},
+            {"id": "Schedar", "name": "Schedar", "gender": "Male", "description": "Uniforme"},
+            {"id": "Achird", "name": "Achird", "gender": "Female", "description": "Amigable"},
+            {"id": "Sadachbia", "name": "Sadachbia", "gender": "N/A", "description": "Animada"},
+            {"id": "Puck", "name": "Puck", "gender": "Male", "description": "Alegre"},
+            {"id": "Fenrir", "name": "Fenrir", "gender": "Male", "description": "Excitante"},
+            {"id": "Aoede", "name": "Aoede", "gender": "Female", "description": "Ligera"},
+            {"id": "Enceladus", "name": "Enceladus", "gender": "Male", "description": "Suave"},
+            {"id": "Algieba", "name": "Algieba", "gender": "N/A", "description": "Suave"},
+            {"id": "Algenib", "name": "Algenib", "gender": "N/A", "description": "Grave"},
+            {"id": "Achernar", "name": "Achernar", "gender": "N/A", "description": "Suave"},
+            {"id": "Gacrux", "name": "Gacrux", "gender": "N/A", "description": "Madura"},
+            {"id": "Zubenelgenubi", "name": "Zubenelgenubi", "gender": "N/A", "description": "Informal"},
+            {"id": "Sadaltager", "name": "Sadaltager", "gender": "N/A", "description": "Informativa"},
+            {"id": "Charon", "name": "Charon", "gender": "Male", "description": "Informativo"},
+            {"id": "Leda", "name": "Leda", "gender": "Female", "description": "Juvenil"},
+            {"id": "Callirrhoe", "name": "Callirrhoe", "gender": "Female", "description": "Tranquilo"},
+            {"id": "Iapetus", "name": "Iapetus", "gender": "Male", "description": "Claro"},
+            {"id": "Despina", "name": "Despina", "gender": "Female", "description": "Suave"},
+            {"id": "Rasalgethi", "name": "Rasalgethi", "gender": "N/A", "description": "Informativo"},
+            {"id": "Alnilam", "name": "Alnilam", "gender": "N/A", "description": "Firme"},
+            {"id": "Pulcherrima", "name": "Pulcherrima", "gender": "N/A", "description": "Directo"},
+            {"id": "Vindemiatrix", "name": "Vindemiatrix", "gender": "Female", "description": "Suave"},
+            {"id": "Sulafat", "name": "Sulafat", "gender": "N/A", "description": "Cálido"},
+        ]
+        
+        # Add dynamic preview URL
+        for v in voices:
+            # We assume the frontend and backend are on same domain, or frontend will prefix API_URL
+            v["preview_url"] = f"/voices/preview/{v['id']}"
+            
+        return voices
+
+    @staticmethod
+    def get_available_languages():
+        return [
+            {"code": "es-US", "name": "Español (EE.UU.)"},
+            {"code": "en-US", "name": "English (US)"},
+            {"code": "ar-EG", "name": "Árabe (Egipto)"},
+            {"code": "de-DE", "name": "Alemán (Alemania)"},
+            {"code": "fr-FR", "name": "Francés (Francia)"},
+            {"code": "hi-IN", "name": "Hindi (India)"},
+            {"code": "id-ID", "name": "Indonesio (Indonesia)"},
+            {"code": "it-IT", "name": "Italiano (Italia)"},
+            {"code": "ja-JP", "name": "Japonés (Japón)"},
+            {"code": "ko-KR", "name": "Coreano (Corea)"},
+            {"code": "pt-BR", "name": "Portugués (Brasil)"},
+            {"code": "ru-RU", "name": "Ruso (Rusia)"},
+            {"code": "nl-NL", "name": "Holandés (Países Bajos)"},
+            {"code": "pl-PL", "name": "Polaco (Polonia)"},
+            {"code": "th-TH", "name": "Tailandés (Tailandia)"},
+            {"code": "tr-TR", "name": "Turco (Türkiye)"},
+            {"code": "vi-VN", "name": "Vietnamita (Vietnam)"},
+            {"code": "ro-RO", "name": "Rumano (Rumania)"},
+            {"code": "uk-UA", "name": "Ucraniano (Ucrania)"},
+            {"code": "bn-BD", "name": "Bengalí (Bangladés)"},
+            {"code": "mr-IN", "name": "Maratí (India)"},
+            {"code": "ta-IN", "name": "Tamil (India)"},
+            {"code": "te-IN", "name": "Telugu (India)"},
+        ]

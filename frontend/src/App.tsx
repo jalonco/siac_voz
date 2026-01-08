@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Phone, Loader2, PhoneCall, Mic, Activity, BarChart3, History, DollarSign, Timer, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
+import { Phone, Loader2, PhoneCall, Mic, Activity, BarChart3, History, DollarSign, Timer, ArrowUpRight, ArrowDownLeft, Play, User, Globe } from 'lucide-react';
 import clsx from 'clsx';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import Editor from 'react-simple-code-editor';
@@ -54,11 +54,25 @@ function App() {
   const [config, setConfig] = useState<{
     system_prompt: string;
     voice_id: string;
+    language?: string;
     variables: VariableDef[];
-  }>({ system_prompt: '', voice_id: 'Charon', variables: [] });
+  }>({ system_prompt: '', voice_id: 'Charon', language: 'es-US', variables: [] });
 
-  const [availableVoices, setAvailableVoices] = useState<string[]>([]);
+  interface Voice {
+    id: string;
+    name: string;
+    gender: string;
+    description: string;
+    preview_url?: string;
+  }
+  interface Language {
+    code: string;
+    name: string;
+  }
+  const [availableVoices, setAvailableVoices] = useState<Voice[]>([]);
+  const [availableLanguages, setAvailableLanguages] = useState<Language[]>([]);
   const [savingConfig, setSavingConfig] = useState(false);
+  const [playingVoice, setPlayingVoice] = useState<string | null>(null);
 
   // Call Variables State
   const [variableInputs, setVariableInputs] = useState<Record<string, string>>({});
@@ -88,13 +102,18 @@ function App() {
 
   const fetchConfig = async () => {
     try {
-      const res = await axios.get(`${API_URL}/agent-config`);
-      setConfig(res.data.config);
-      setAvailableVoices(res.data.available_voices);
+      const [configRes, voicesRes, languagesRes] = await Promise.all([
+        axios.get(`${API_URL}/agent-config`),
+        axios.get(`${API_URL}/voices`),
+        axios.get(`${API_URL}/languages`)
+      ]);
+      setConfig(configRes.data.config);
+      setAvailableVoices(voicesRes.data);
+      setAvailableLanguages(languagesRes.data);
     } catch (err) {
-      console.error("Failed to fetch config", err);
+      console.error("Failed to load config", err);
     }
-  }
+  };
 
   const saveConfig = async () => {
     setSavingConfig(true);
@@ -433,18 +452,93 @@ function App() {
                 <p className="text-slate-500 mt-2">Personaliza la Persona y Voz de la IA</p>
               </div>
 
-              <div className="space-y-6">
+              <div className="space-y-8">
+                {/* Language Selector */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-400 mb-2">Modelo de Voz</label>
+                  <label className="block text-sm font-medium text-slate-400 mb-4 flex items-center gap-2">
+                    <Globe className="w-4 h-4" />
+                    Idioma del Agente
+                  </label>
                   <select
-                    className="w-full bg-slate-900/50 border border-slate-700 rounded-lg p-3 text-white focus:outline-none focus:border-cyan-500"
-                    value={config.voice_id}
-                    onChange={(e) => setConfig({ ...config, voice_id: e.target.value })}
+                    className="w-full bg-slate-900/50 border border-slate-700 rounded-lg p-3 text-white focus:outline-none focus:border-cyan-500 transition-colors"
+                    value={config.language || 'es-US'}
+                    onChange={(e) => setConfig({ ...config, language: e.target.value })}
                   >
-                    {availableVoices.map(voice => (
-                      <option key={voice} value={voice}>{voice}</option>
+                    {availableLanguages.map((lang) => (
+                      <option key={lang.code} value={lang.code}>
+                        {lang.name}
+                      </option>
                     ))}
                   </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-400 mb-4 flex items-center gap-2">
+                    <User className="w-4 h-4" />
+                    Modelo de Voz ({availableVoices.length})
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                    {availableVoices.map((voice) => (
+                      <div
+                        key={voice.id}
+                        onClick={() => setConfig({ ...config, voice_id: voice.id })}
+                        className={clsx(
+                          "relative p-4 rounded-xl border cursor-pointer transition-all hover:scale-[1.02]",
+                          config.voice_id === voice.id
+                            ? "bg-cyan-500/10 border-cyan-500 ring-1 ring-cyan-500/50"
+                            : "bg-slate-900/50 border-slate-700 hover:border-slate-500"
+                        )}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className={clsx(
+                              "w-10 h-10 rounded-full flex items-center justify-center",
+                              config.voice_id === voice.id ? "bg-cyan-500/20 text-cyan-400" : "bg-slate-800 text-slate-400"
+                            )}>
+                              <User className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <h4 className={clsx("font-medium", config.voice_id === voice.id ? "text-cyan-400" : "text-white")}>
+                                {voice.name}
+                              </h4>
+                              <p className="text-xs text-slate-500">{voice.gender} • {voice.description}</p>
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              // Play audio preview
+                              if (playingVoice === voice.id) {
+                                setPlayingVoice(null); // Stop if clicking same
+                              } else {
+                                setPlayingVoice(voice.id);
+                                const audio = new Audio(`${API_URL}${voice.preview_url}`);
+                                audio.play().catch(err => {
+                                  console.error("Audio playback error:", err);
+                                  setPlayingVoice(null);
+                                });
+                                audio.onended = () => setPlayingVoice(null);
+                              }
+                            }}
+                            className={clsx(
+                              "w-8 h-8 rounded-full flex items-center justify-center transition-colors",
+                              playingVoice === voice.id
+                                ? "bg-cyan-500 text-white animate-pulse"
+                                : "bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white"
+                            )}
+                            title="Escuchar previa"
+                          >
+                            {playingVoice === voice.id ? (
+                              <div className="w-3 h-3 bg-white rounded-sm" /> // Stop icon approximation
+                            ) : (
+                              <Play className="w-3 h-3 fill-current" />
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 <div>
@@ -589,9 +683,10 @@ function App() {
               </div>
             </div>
           </div>
-        )}
-      </main>
-    </div>
+        )
+        }
+      </main >
+    </div >
   );
 }
 

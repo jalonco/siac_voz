@@ -101,8 +101,23 @@ async def make_call(call_request: CallRequest):
         logger.error(f"Failed to make call: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/agent-config")
+async def update_agent_config(config: AgentConfig):
+    # Validate voices
+    valid_voices = [v["id"] for v in SettingsManager.get_available_voices()]
+    if config.voice_id not in valid_voices:
+        logger.warning(f"Invalid voice_id {config.voice_id}, proceeding anyway.")
+    
+    SettingsManager.save_settings(config.model_dump())
+    return {"status": "updated"}
 
+@app.get("/voices")
+async def get_voices():
+    return SettingsManager.get_available_voices()
 
+@app.get("/languages")
+async def get_languages():
+    return SettingsManager.get_available_languages()
 @app.get("/calls")
 async def get_calls(limit: int = 20):
     """
@@ -126,6 +141,37 @@ async def get_calls(limit: int = 20):
         return {"calls": call_data}
     except Exception as e:
         logger.error(f"Failed to fetch calls: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/voices/preview/{voice_id}")
+async def get_voice_preview(voice_id: str):
+    """
+    Proxy voice preview audio from GCS.
+    """
+    try:
+        from google.cloud import storage
+        from recorder import KEY_FILE, BUCKET_NAME
+        
+        # Initialize GCS client
+        storage_client = storage.Client.from_service_account_json(KEY_FILE)
+        bucket = storage_client.bucket(BUCKET_NAME)
+        
+        # Construct blob path (case-insensitive handling by lowercasing)
+        blob_name = f"previews/{voice_id.lower()}.m4a"
+        blob = bucket.blob(blob_name)
+        
+        if not blob.exists():
+            raise HTTPException(status_code=404, detail="Audio preview not found")
+            
+        # Create a generator to stream the file
+        def iterfile():
+            with blob.open("rb") as f:
+                yield from f
+                
+        return StreamingResponse(iterfile(), media_type="audio/mp4")
+        
+    except Exception as e:
+        logger.error(f"Failed to stream preview: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/voice")
@@ -217,8 +263,24 @@ async def media_stream(websocket: WebSocket):
 # Mount static files (Frontend)
 # We mount it at the end to avoid shadowing API routes
 # Mount static files (Frontend)
-# We mount it at the end to avoid shadowing API routes
 import os
+from fastapi.responses import FileResponse
+
+# Explicitly serve index.html for root to prevent caching old versions
+@app.get("/")
+async def serve_root():
+    # Check possible locations (local vs docker)
+    if os.path.exists("frontend/dist/index.html"):
+        path = "frontend/dist/index.html"
+    elif os.path.exists("static/index.html"):
+        path = "static/index.html"
+    else:
+        return {"error": "Frontend not found"}
+        
+    response = FileResponse(path)
+    # Force browser to revalidate so it picks up new index-HASH.js
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    return response
 
 # Check if frontend/dist exists (Vite build output)
 if os.path.exists("frontend/dist"):
