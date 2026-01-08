@@ -492,8 +492,12 @@ function App() {
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <div className={clsx(
-                              "w-10 h-10 rounded-full flex items-center justify-center",
-                              config.voice_id === voice.id ? "bg-cyan-500/20 text-cyan-400" : "bg-slate-800 text-slate-400"
+                              "w-10 h-10 rounded-full flex items-center justify-center transition-colors",
+                              config.voice_id === voice.id
+                                ? "bg-cyan-500/20 text-cyan-400"
+                                : voice.gender === 'Female'
+                                  ? "bg-pink-500/10 text-pink-400"
+                                  : "bg-blue-500/10 text-blue-400"
                             )}>
                               <User className="w-5 h-5" />
                             </div>
@@ -501,7 +505,17 @@ function App() {
                               <h4 className={clsx("font-medium", config.voice_id === voice.id ? "text-cyan-400" : "text-white")}>
                                 {voice.name}
                               </h4>
-                              <p className="text-xs text-slate-500">{voice.gender} • {voice.description}</p>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <span className={clsx(
+                                  "text-[10px] px-1.5 py-0.5 rounded-full font-medium",
+                                  voice.gender === 'Female'
+                                    ? "bg-pink-500/20 text-pink-300"
+                                    : "bg-blue-500/20 text-blue-300"
+                                )}>
+                                  {voice.gender === 'Female' ? 'Mujer' : 'Hombre'}
+                                </span>
+                                <span className="text-xs text-slate-500">• {voice.description}</span>
+                              </div>
                             </div>
                           </div>
 
