@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Phone, Loader2, PhoneCall, Mic, Activity, BarChart3, History, DollarSign, Timer, ArrowUpRight, ArrowDownLeft, Play, User, Globe } from 'lucide-react';
+import { Phone, Loader2, PhoneCall, Mic, Activity, BarChart3, History, DollarSign, Timer, ArrowUpRight, ArrowDownLeft, Play, User, Globe, Users, Plus, Trash2 } from 'lucide-react';
 import clsx from 'clsx';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import Editor from 'react-simple-code-editor';
@@ -33,10 +33,24 @@ interface CallLog {
   price_unit: string | null;
 }
 
+interface VariableDef {
+  key: string;
+  description: string;
+  example: string;
+}
+
+interface Agent {
+  id: string;
+  name: string;
+  system_prompt: string;
+  voice_id: string;
+  language: string;
+  variables: VariableDef[];
+}
+
 function App() {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [status, setStatus] = useState<'idle' | 'calling' | 'connected' | 'error'>('idle');
-  // Removed unused callSid
   const [errorMsg, setErrorMsg] = useState('');
   const [activeTab, setActiveTab] = useState<'dialer' | 'analytics' | 'config'>('dialer');
 
@@ -44,19 +58,21 @@ function App() {
   const [calls, setCalls] = useState<CallLog[]>([]);
   const [loadingCalls, setLoadingCalls] = useState(false);
 
-  // Config State
-  interface VariableDef {
-    key: string;
-    description: string;
-    example: string;
-  }
+  // Agents State
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null); // For Config
+  const [dialerAgentId, setDialerAgentId] = useState<string | null>(null); // For Dialer
 
-  const [config, setConfig] = useState<{
-    system_prompt: string;
-    voice_id: string;
-    language?: string;
-    variables: VariableDef[];
-  }>({ system_prompt: '', voice_id: 'Charon', language: 'es-US', variables: [] });
+  // Computed selected agent for config
+  const selectedAgent = agents.find(a => a.id === selectedAgentId) || agents[0];
+
+  const [availableVoices, setAvailableVoices] = useState<Voice[]>([]);
+  const [availableLanguages, setAvailableLanguages] = useState<Language[]>([]);
+  const [savingConfig, setSavingConfig] = useState(false);
+  const [playingVoice, setPlayingVoice] = useState<string | null>(null);
+
+  // Call Variables State
+  const [variableInputs, setVariableInputs] = useState<Record<string, string>>({});
 
   interface Voice {
     id: string;
@@ -69,13 +85,6 @@ function App() {
     code: string;
     name: string;
   }
-  const [availableVoices, setAvailableVoices] = useState<Voice[]>([]);
-  const [availableLanguages, setAvailableLanguages] = useState<Language[]>([]);
-  const [savingConfig, setSavingConfig] = useState(false);
-  const [playingVoice, setPlayingVoice] = useState<string | null>(null);
-
-  // Call Variables State
-  const [variableInputs, setVariableInputs] = useState<Record<string, string>>({});
 
 
 
@@ -83,8 +92,9 @@ function App() {
   useEffect(() => {
     if (activeTab === 'analytics') {
       fetchCalls();
-    } else if (activeTab === 'config') {
-      fetchConfig();
+    } else {
+      // Always fetch agents to ensure dialer has list
+      fetchAgents();
     }
   }, [activeTab]);
 
@@ -100,33 +110,80 @@ function App() {
     }
   };
 
-  const fetchConfig = async () => {
+  const fetchAgents = async () => {
     try {
-      const [configRes, voicesRes, languagesRes] = await Promise.all([
-        axios.get(`${API_URL}/agent-config`),
-        axios.get(`${API_URL}/voices`),
-        axios.get(`${API_URL}/languages`)
-      ]);
-      setConfig(configRes.data.config);
-      setAvailableVoices(voicesRes.data);
-      setAvailableLanguages(languagesRes.data);
+      const res = await axios.get(`${API_URL}/agents`);
+
+      const agentsList = res.data.agents;
+      setAgents(agentsList);
+      setAvailableVoices(res.data.available_voices);
+      setAvailableLanguages(res.data.available_languages);
+
+      // Set defaults if not set
+      if (agentsList.length > 0) {
+        if (!selectedAgentId) setSelectedAgentId(agentsList[0].id);
+        if (!dialerAgentId) setDialerAgentId(agentsList[0].id);
+      }
     } catch (err) {
-      console.error("Failed to load config", err);
+      console.error("Failed to load agents", err);
     }
   };
 
-  const saveConfig = async () => {
+  const saveSelectedAgent = async () => {
+    if (!selectedAgent) return;
     setSavingConfig(true);
     try {
-      await axios.post(`${API_URL}/agent-config`, config);
-      alert('¡Configuración guardada!');
+      const res = await axios.put(`${API_URL}/agents/${selectedAgent.id}`, selectedAgent);
+      // Update local list
+      setAgents(agents.map(a => a.id === selectedAgent.id ? res.data.agent : a));
+      alert('¡Agente guardado!');
     } catch (err) {
-      console.error("Failed to save config", err);
-      alert('Error al guardar configuración.');
+      console.error("Failed to save agent", err);
+      alert('Error al guardar agente.');
     } finally {
       setSavingConfig(false);
     }
   };
+
+  const createAgent = async () => {
+    const newName = prompt("Nombre del nuevo agente:");
+    if (!newName) return;
+
+    try {
+      const res = await axios.post(`${API_URL}/agents`, {
+        id: "new",
+        name: newName,
+        system_prompt: "Eres un asistente útil...",
+        voice_id: "Zephyr",
+        language: "es-US",
+        variables: []
+      });
+      const newAgent = res.data.agent;
+      setAgents([...agents, newAgent]);
+      setSelectedAgentId(newAgent.id);
+    } catch (err) {
+      console.error("Error creating agent", err);
+      alert("Error al crear agente");
+    }
+  }
+
+  const deleteAgent = async () => {
+    if (!selectedAgent || selectedAgent.id === 'default') {
+      alert("No se puede eliminar el agente por defecto.");
+      return;
+    }
+    if (!confirm(`¿Eliminar agente "${selectedAgent.name}"?`)) return;
+
+    try {
+      await axios.delete(`${API_URL}/agents/${selectedAgent.id}`);
+      const newAgents = agents.filter(a => a.id !== selectedAgent.id);
+      setAgents(newAgents);
+      setSelectedAgentId(newAgents[0]?.id || null);
+    } catch (err) {
+      console.error("Error deleting agent", err);
+      alert("Error al eliminar agente");
+    }
+  }
 
   const handleCall = async () => {
     if (!phoneNumber) return;
@@ -141,7 +198,8 @@ function App() {
 
       await axios.post(`${API_URL}/call`, {
         to_number: formattedNumber,
-        variables: variableInputs
+        variables: variableInputs,
+        agent_id: dialerAgentId
       });
 
       // We don't use callSid in UI currently, so just ignore response data
@@ -230,11 +288,30 @@ function App() {
                 <div className="w-24 h-24 bg-cyan-500/20 rounded-full blur-3xl" />
               </div>
 
-              <div className="text-center mb-8">
+              <div className="text-center mb-6">
                 <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
                   Realizar Llamada
                 </h1>
-                <p className="text-slate-500 mt-2">Ingresa el número para iniciar la conversación con IA</p>
+                <p className="text-slate-500 mt-2">Selecciona un agente y marca</p>
+              </div>
+
+              {/* Agent Selector */}
+              <div className="mb-6 relative group">
+                <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+                  <Users className="w-5 h-5 text-slate-500" />
+                </div>
+                <select
+                  className="input-field pl-12 appearance-none cursor-pointer hover:border-cyan-500/50 transition-colors"
+                  value={dialerAgentId || ''}
+                  onChange={(e) => setDialerAgentId(e.target.value)}
+                >
+                  {agents.map(a => (
+                    <option key={a.id} value={a.id}>{a.name}</option>
+                  ))}
+                </select>
+                <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none">
+                  <span className="text-slate-500 text-xs">▼</span>
+                </div>
               </div>
 
               <div className="space-y-6">
@@ -253,27 +330,32 @@ function App() {
                 </div>
 
                 {/* Dynamic Variable Inputs */}
-                {config.variables && config.variables.length > 0 && (
-                  <div className="space-y-4">
-                    <div className="text-sm font-medium text-slate-400">Variables de Llamada</div>
-                    {config.variables.map((v) => (
-                      <div key={v.key} className="relative group">
-                        <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-                          <Activity className="w-5 h-5 text-slate-500" />
-                        </div>
-                        <label className="block text-xs text-slate-500 mb-1 ml-1 pl-12">{v.description} ({v.key})</label>
-                        <input
-                          type="text"
-                          value={variableInputs[v.key] || ''}
-                          onChange={(e) => setVariableInputs({ ...variableInputs, [v.key]: e.target.value })}
-                          placeholder={v.example}
-                          className="input-field pl-12"
-                          disabled={status === 'calling'}
-                        />
+                {(() => {
+                  const currentDialerAgent = agents.find(a => a.id === dialerAgentId);
+                  return (
+                    currentDialerAgent && currentDialerAgent.variables && currentDialerAgent.variables.length > 0 && (
+                      <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                        <div className="text-sm font-medium text-slate-400">Variables para {currentDialerAgent.name}</div>
+                        {currentDialerAgent.variables.map((v) => (
+                          <div key={v.key} className="relative group">
+                            <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+                              <Activity className="w-5 h-5 text-slate-500" />
+                            </div>
+                            <label className="block text-xs text-slate-500 mb-1 ml-1 pl-12">{v.description} ({v.key})</label>
+                            <input
+                              type="text"
+                              value={variableInputs[v.key] || ''}
+                              onChange={(e) => setVariableInputs({ ...variableInputs, [v.key]: e.target.value })}
+                              placeholder={v.example}
+                              className="input-field pl-12"
+                              disabled={status === 'calling'}
+                            />
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                )}
+                    )
+                  );
+                })()}
 
                 <button
                   onClick={handleCall}
@@ -443,258 +525,341 @@ function App() {
         )}
 
         {activeTab === 'config' && (
-          <div className="flex flex-col items-center justify-center min-h-[60vh]">
-            <div className="max-w-2xl w-full glass-panel rounded-3xl p-8 border border-slate-700/50 relative">
-              <div className="text-center mb-8">
-                <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
-                  Configuración del Agente
-                </h1>
-                <p className="text-slate-500 mt-2">Personaliza la Persona y Voz de la IA</p>
-              </div>
-
-              <div className="space-y-8">
-                {/* Language Selector */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-400 mb-4 flex items-center gap-2">
-                    <Globe className="w-4 h-4" />
-                    Idioma del Agente
-                  </label>
-                  <select
-                    className="w-full bg-slate-900/50 border border-slate-700 rounded-lg p-3 text-white focus:outline-none focus:border-cyan-500 transition-colors"
-                    value={config.language || 'es-US'}
-                    onChange={(e) => setConfig({ ...config, language: e.target.value })}
-                  >
-                    {availableLanguages.map((lang) => (
-                      <option key={lang.code} value={lang.code}>
-                        {lang.name}
-                      </option>
-                    ))}
-                  </select>
+          <div className="flex min-h-[70vh] gap-6 max-w-7xl mx-auto w-full">
+            {/* Sidebar: Agent List */}
+            <div className="w-64 flex-shrink-0 flex flex-col gap-4">
+              <div className="glass-panel p-4 rounded-2xl border border-slate-700/50 flex flex-col h-full opacity-90">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="font-semibold text-slate-200">Mis Agentes</h2>
+                  <button onClick={createAgent} className="p-1.5 bg-cyan-500/20 text-cyan-400 rounded-lg hover:bg-cyan-500/30 transition-colors">
+                    <Plus className="w-4 h-4" />
+                  </button>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-slate-400 mb-4 flex items-center gap-2">
-                    <User className="w-4 h-4" />
-                    Modelo de Voz ({availableVoices.length})
-                  </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                    {availableVoices.map((voice) => (
-                      <div
-                        key={voice.id}
-                        onClick={() => setConfig({ ...config, voice_id: voice.id })}
-                        className={clsx(
-                          "relative p-4 rounded-xl border cursor-pointer transition-all hover:scale-[1.02]",
-                          config.voice_id === voice.id
-                            ? "bg-cyan-500/10 border-cyan-500 ring-1 ring-cyan-500/50"
-                            : "bg-slate-900/50 border-slate-700 hover:border-slate-500"
-                        )}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className={clsx(
-                              "w-10 h-10 rounded-full flex items-center justify-center transition-colors",
-                              config.voice_id === voice.id
-                                ? "bg-cyan-500/20 text-cyan-400"
-                                : voice.gender === 'Female'
-                                  ? "bg-pink-500/10 text-pink-400"
-                                  : "bg-blue-500/10 text-blue-400"
-                            )}>
-                              <User className="w-5 h-5" />
-                            </div>
-                            <div>
-                              <h4 className={clsx("font-medium", config.voice_id === voice.id ? "text-cyan-400" : "text-white")}>
-                                {voice.name}
-                              </h4>
-                              <div className="flex items-center gap-2 mt-0.5">
-                                <span className={clsx(
-                                  "text-[10px] px-1.5 py-0.5 rounded-full font-medium",
-                                  voice.gender === 'Female'
-                                    ? "bg-pink-500/20 text-pink-300"
-                                    : "bg-blue-500/20 text-blue-300"
-                                )}>
-                                  {voice.gender === 'Female' ? 'Mujer' : 'Hombre'}
-                                </span>
-                                <span className="text-xs text-slate-500">• {voice.description}</span>
-                              </div>
-                            </div>
-                          </div>
-
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              // Play audio preview
-                              if (playingVoice === voice.id) {
-                                setPlayingVoice(null); // Stop if clicking same
-                              } else {
-                                setPlayingVoice(voice.id);
-                                const audio = new Audio(`${API_URL}${voice.preview_url}`);
-                                audio.play().catch(err => {
-                                  console.error("Audio playback error:", err);
-                                  setPlayingVoice(null);
-                                });
-                                audio.onended = () => setPlayingVoice(null);
-                              }
-                            }}
-                            className={clsx(
-                              "w-8 h-8 rounded-full flex items-center justify-center transition-colors",
-                              playingVoice === voice.id
-                                ? "bg-cyan-500 text-white animate-pulse"
-                                : "bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white"
-                            )}
-                            title="Escuchar previa"
-                          >
-                            {playingVoice === voice.id ? (
-                              <div className="w-3 h-3 bg-white rounded-sm" /> // Stop icon approximation
-                            ) : (
-                              <Play className="w-3 h-3 fill-current" />
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-400 mb-2">System Prompt</label>
-                  <div className="bg-slate-900/50 border border-slate-700 rounded-lg overflow-hidden focus-within:border-cyan-500 transition-colors">
-                    <Editor
-                      value={config.system_prompt}
-                      onValueChange={code => setConfig({ ...config, system_prompt: code })}
-                      highlight={highlightWithVariables}
-                      padding={16}
-                      className="font-mono text-sm leading-6"
-                      style={{
-                        fontFamily: '"Fira code", "Fira Mono", monospace',
-                        fontSize: 14,
-                        minHeight: '300px',
-                        backgroundColor: 'transparent',
-                        color: '#f8fafc'
-                      }}
-                      textareaClassName="focus:outline-none"
-                    />
-                  </div>
-                </div>
-
-                {/* Variables Configuration */}
-                <div className="space-y-4 border-t border-slate-700 pt-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex flex-col">
-                      <label className="block text-sm font-medium text-slate-400">Variables Dinámicas</label>
-                      <span className="text-xs text-slate-500">Define datos que cambian por llamada (ej. nombre, deuda)</span>
-                    </div>
-                    <button
-                      onClick={() => setConfig({
-                        ...config,
-                        variables: [...(config.variables || []), { key: '', description: '', example: '' }]
-                      })}
-                      className="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-md transition-colors text-cyan-400 border border-slate-700 hover:border-cyan-500/50"
+                <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+                  {agents.map(agent => (
+                    <div
+                      key={agent.id}
+                      onClick={() => setSelectedAgentId(agent.id)}
+                      className={clsx(
+                        "p-3 rounded-xl border cursor-pointer transition-all flex items-center gap-3",
+                        selectedAgentId === agent.id
+                          ? "bg-cyan-500/10 border-cyan-500/50 shadow-sm shadow-cyan-900/20"
+                          : "bg-slate-800/30 border-transparent hover:bg-slate-800"
+                      )}
                     >
-                      + Agregar Variable
-                    </button>
-                  </div>
-
-                  {/* Dynamic Guide */}
-                  <div className="bg-blue-500/5 border border-blue-500/10 rounded-lg p-3 text-xs text-slate-400 flex flex-col gap-2">
-                    <div className="flex items-start gap-2">
-                      <div className="p-1 bg-blue-500/10 rounded-full mt-0.5">
-                        <Activity className="w-3 h-3 text-blue-400" />
+                      <div className={clsx(
+                        "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold",
+                        selectedAgentId === agent.id ? "bg-cyan-500 text-white" : "bg-slate-700 text-slate-400"
+                      )}>
+                        {agent.name.charAt(0)}
                       </div>
-                      <div>
-                        <span className="font-semibold text-blue-300 block mb-1">Cómo usar variables:</span>
-                        <ol className="list-decimal list-inside space-y-1 ml-1 text-slate-500">
-                          <li>Define una variable abajo (ej. Clave: <span className="text-cyan-400 font-mono">nombre</span>).</li>
-                          <li>Copia la etiqueta <span className="inline-block px-1 bg-slate-800 rounded text-cyan-400 font-mono transform scale-90 text-[10px]">{`{{nombre}}`}</span>.</li>
-                          <li>Pégala en tu <strong>System Prompt</strong> arriba donde quieras que aparezca el valor.</li>
-                        </ol>
+                      <div className="overflow-hidden">
+                        <h4 className={clsx("text-sm font-medium truncate", selectedAgentId === agent.id ? "text-cyan-100" : "text-slate-400")}>{agent.name}</h4>
+                        <p className="text-[10px] text-slate-500 truncate">{agent.id === 'default' ? 'Principal' : 'Agente Personal'}</p>
                       </div>
                     </div>
-                  </div>
+                  ))}
+                </div>
+              </div>
+            </div>
 
-                  <div className="space-y-3">
-                    {config.variables && config.variables.map((variable, idx) => (
-                      <div key={idx} className="flex gap-2 items-start animate-in fade-in slide-in-from-left-4 duration-300">
-                        <div className="flex-1 space-y-1">
-                          <div className="flex gap-2">
-                            <input
-                              placeholder="Clave (ej. nombre)"
-                              className="w-1/3 bg-slate-900/50 border border-slate-700 rounded-lg p-2 text-sm text-white focus:border-cyan-500 outline-none font-mono"
-                              value={variable.key}
-                              onChange={(e) => {
-                                const newVars = [...config.variables];
-                                newVars[idx].key = e.target.value.replace(/[^a-zA-Z0-9_]/g, ''); // Enforce safe keys
-                                setConfig({ ...config, variables: newVars });
-                              }}
-                            />
-                            <input
-                              placeholder="Descripción (ej. Nombre Cliente)"
-                              className="flex-1 bg-slate-900/50 border border-slate-700 rounded-lg p-2 text-sm text-white focus:border-cyan-500 outline-none"
-                              value={variable.description}
-                              onChange={(e) => {
-                                const newVars = [...config.variables];
-                                newVars[idx].description = e.target.value;
-                                setConfig({ ...config, variables: newVars });
-                              }}
-                            />
-                            <input
-                              placeholder="Ejemplo (ej. Juan)"
-                              className="flex-1 bg-slate-900/50 border border-slate-700 rounded-lg p-2 text-sm text-white focus:border-cyan-500 outline-none"
-                              value={variable.example}
-                              onChange={(e) => {
-                                const newVars = [...config.variables];
-                                newVars[idx].example = e.target.value;
-                                setConfig({ ...config, variables: newVars });
-                              }}
-                            />
-                            <button
-                              onClick={() => {
-                                const newVars = config.variables.filter((_, i) => i !== idx);
-                                setConfig({ ...config, variables: newVars });
-                              }}
-                              className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors border border-transparent hover:border-red-500/20"
-                              title="Remove Variable"
-                            >
-                              <Activity className="w-4 h-4 rotate-45" />
-                            </button>
-                          </div>
-
-                          {/* Injection Helper */}
-                          {variable.key && (
-                            <div className="flex items-center gap-2 pl-1">
-                              <span className="text-[10px] text-slate-600">Usar en prompt:</span>
-                              <button
-                                onClick={() => {
-                                  navigator.clipboard.writeText(`{{${variable.key}}}`);
-                                  // Optional: Show toast
-                                }}
-                                className="text-[10px] font-mono text-cyan-500 bg-cyan-950/30 px-1.5 py-0.5 rounded border border-cyan-900/50 hover:border-cyan-500/50 cursor-copy transition-all active:scale-95 flex items-center gap-1"
-                                title="Clic para copiar etiqueta"
-                              >
-                                {`{{${variable.key}}}`}
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                    {(!config.variables || config.variables.length === 0) && (
-                      <div className="text-center p-6 border-2 border-dashed border-slate-800 rounded-xl bg-slate-900/20">
-                        <p className="text-sm text-slate-500">No hay variables personalizadas definidas aún.</p>
-                        <p className="text-xs text-slate-600 mt-1">Agrega variables como "nombre" o "monto" para personalizar tu Agente.</p>
-                      </div>
+            {/* Main Panel: Editor */}
+            <div className="flex-1">
+              {selectedAgent ? (
+                <div className="glass-panel rounded-3xl p-8 border border-slate-700/50 relative animate-in fade-in slide-in-from-right-4 duration-300">
+                  <div className="flex items-center justify-between mb-8">
+                    <div>
+                      <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
+                        Editar: {selectedAgent.name}
+                      </h1>
+                      <p className="text-slate-500 mt-1">Personaliza la Persona y Voz</p>
+                    </div>
+                    {selectedAgent.id !== 'default' && (
+                      <button onClick={deleteAgent} className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 text-red-400 rounded-lg border border-red-500/20 hover:bg-red-500/20 transition-colors text-sm">
+                        <Trash2 className="w-4 h-4" /> Eliminar Agente
+                      </button>
                     )}
                   </div>
+
+                  {/* Agent Name Input */}
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-slate-400 mb-2">Nombre del Agente</label>
+                    <div className="flex gap-2">
+                      <input
+                        value={selectedAgent.name}
+                        onChange={(e) => {
+                          // Update local state immediately for responsiveness
+                          const updated = { ...selectedAgent, name: e.target.value };
+                          setAgents(agents.map(a => a.id === selectedAgent.id ? updated : a));
+                        }}
+                        className="input-field max-w-sm"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-8">
+                    {/* Language Selector */}
+                    <div>
+                      <label className="block text-sm font-medium text-slate-400 mb-4 flex items-center gap-2">
+                        <Globe className="w-4 h-4" />
+                        Idioma del Agente
+                      </label>
+                      <select
+                        className="w-full bg-slate-900/50 border border-slate-700 rounded-lg p-3 text-white focus:outline-none focus:border-cyan-500 transition-colors"
+                        value={selectedAgent.language || 'es-US'}
+                        onChange={(e) => {
+                          const updated = { ...selectedAgent, language: e.target.value };
+                          setAgents(agents.map(a => a.id === selectedAgent.id ? updated : a));
+                        }}
+                      >
+                        {availableLanguages.map((lang) => (
+                          <option key={lang.code} value={lang.code}>
+                            {lang.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-400 mb-4 flex items-center gap-2">
+                        <User className="w-4 h-4" />
+                        Modelo de Voz ({availableVoices.length})
+                      </label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                        {availableVoices.map((voice) => (
+                          <div
+                            key={voice.id}
+                            onClick={() => {
+                              const updated = { ...selectedAgent, voice_id: voice.id };
+                              setAgents(agents.map(a => a.id === selectedAgent.id ? updated : a));
+                            }}
+                            className={clsx(
+                              "relative p-4 rounded-xl border cursor-pointer transition-all hover:scale-[1.02]",
+                              selectedAgent.voice_id === voice.id
+                                ? "bg-cyan-500/10 border-cyan-500 ring-1 ring-cyan-500/50"
+                                : "bg-slate-900/50 border-slate-700 hover:border-slate-500"
+                            )}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className={clsx(
+                                  "w-10 h-10 rounded-full flex items-center justify-center transition-colors",
+                                  selectedAgent.voice_id === voice.id
+                                    ? "bg-cyan-500/20 text-cyan-400"
+                                    : voice.gender === 'Female'
+                                      ? "bg-pink-500/10 text-pink-400"
+                                      : "bg-blue-500/10 text-blue-400"
+                                )}>
+                                  <User className="w-5 h-5" />
+                                </div>
+                                <div>
+                                  <h4 className={clsx("font-medium", selectedAgent.voice_id === voice.id ? "text-cyan-400" : "text-white")}>
+                                    {voice.name}
+                                  </h4>
+                                  <div className="flex items-center gap-2 mt-0.5">
+                                    <span className={clsx(
+                                      "text-[10px] px-1.5 py-0.5 rounded-full font-medium",
+                                      voice.gender === 'Female'
+                                        ? "bg-pink-500/20 text-pink-300"
+                                        : "bg-blue-500/20 text-blue-300"
+                                    )}>
+                                      {voice.gender === 'Female' ? 'Mujer' : 'Hombre'}
+                                    </span>
+                                    <span className="text-xs text-slate-500">• {voice.description}</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  // Play audio preview
+                                  if (playingVoice === voice.id) {
+                                    setPlayingVoice(null); // Stop if clicking same
+                                  } else {
+                                    setPlayingVoice(voice.id);
+                                    const audio = new Audio(`${API_URL}${voice.preview_url}`);
+                                    audio.play().catch(err => {
+                                      console.error("Audio playback error:", err);
+                                      setPlayingVoice(null);
+                                    });
+                                    audio.onended = () => setPlayingVoice(null);
+                                  }
+                                }}
+                                className={clsx(
+                                  "w-8 h-8 rounded-full flex items-center justify-center transition-colors",
+                                  playingVoice === voice.id
+                                    ? "bg-cyan-500 text-white animate-pulse"
+                                    : "bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white"
+                                )}
+                                title="Escuchar previa"
+                              >
+                                {playingVoice === voice.id ? (
+                                  <div className="w-3 h-3 bg-white rounded-sm" /> // Stop icon approximation
+                                ) : (
+                                  <Play className="w-3 h-3 fill-current" />
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-400 mb-2">System Prompt</label>
+                      <div className="bg-slate-900/50 border border-slate-700 rounded-lg overflow-hidden focus-within:border-cyan-500 transition-colors">
+                        <Editor
+                          value={selectedAgent.system_prompt}
+                          onValueChange={code => {
+                            const updated = { ...selectedAgent, system_prompt: code };
+                            setAgents(agents.map(a => a.id === selectedAgent.id ? updated : a));
+                          }}
+                          highlight={highlightWithVariables}
+                          padding={16}
+                          className="font-mono text-sm leading-6"
+                          style={{
+                            fontFamily: '"Fira code", "Fira Mono", monospace',
+                            fontSize: 14,
+                            minHeight: '300px',
+                            backgroundColor: 'transparent',
+                            color: '#f8fafc'
+                          }}
+                          textareaClassName="focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Variables Configuration */}
+                    <div className="space-y-4 border-t border-slate-700 pt-6">
+                      <div className="flex items-center justify-between">
+                        <div className="flex flex-col">
+                          <label className="block text-sm font-medium text-slate-400">Variables Dinámicas</label>
+                          <span className="text-xs text-slate-500">Define datos que cambian por llamada (ej. nombre, deuda)</span>
+                        </div>
+                        <button
+                          onClick={() => {
+                            const updated = { ...selectedAgent, variables: [...(selectedAgent.variables || []), { key: '', description: '', example: '' }] };
+                            setAgents(agents.map(a => a.id === selectedAgent.id ? updated : a));
+                          }}
+                          className="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-md transition-colors text-cyan-400 border border-slate-700 hover:border-cyan-500/50"
+                        >
+                          + Agregar Variable
+                        </button>
+                      </div>
+
+                      {/* Dynamic Guide */}
+                      <div className="bg-blue-500/5 border border-blue-500/10 rounded-lg p-3 text-xs text-slate-400 flex flex-col gap-2">
+                        <div className="flex items-start gap-2">
+                          <div className="p-1 bg-blue-500/10 rounded-full mt-0.5">
+                            <Activity className="w-3 h-3 text-blue-400" />
+                          </div>
+                          <div>
+                            <span className="font-semibold text-blue-300 block mb-1">Cómo usar variables:</span>
+                            <ol className="list-decimal list-inside space-y-1 ml-1 text-slate-500">
+                              <li>Define una variable abajo (ej. Clave: <span className="text-cyan-400 font-mono">nombre</span>).</li>
+                              <li>Copia la etiqueta <span className="inline-block px-1 bg-slate-800 rounded text-cyan-400 font-mono transform scale-90 text-[10px]">{`{{nombre}}`}</span>.</li>
+                              <li>Pégala en tu <strong>System Prompt</strong> arriba donde quieras que aparezca el valor.</li>
+                            </ol>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        {selectedAgent.variables && selectedAgent.variables.map((variable, idx) => (
+                          <div key={idx} className="flex gap-2 items-start animate-in fade-in slide-in-from-left-4 duration-300">
+                            <div className="flex-1 space-y-1">
+                              <div className="flex gap-2">
+                                <input
+                                  placeholder="Clave (ej. nombre)"
+                                  className="w-1/3 bg-slate-900/50 border border-slate-700 rounded-lg p-2 text-sm text-white focus:border-cyan-500 outline-none font-mono"
+                                  value={variable.key}
+                                  onChange={(e) => {
+                                    const newVars = [...selectedAgent.variables];
+                                    newVars[idx].key = e.target.value.replace(/[^a-zA-Z0-9_]/g, ''); // Enforce safe keys
+                                    const updated = { ...selectedAgent, variables: newVars };
+                                    setAgents(agents.map(a => a.id === selectedAgent.id ? updated : a));
+                                  }}
+                                />
+                                <input
+                                  placeholder="Descripción (ej. Nombre Cliente)"
+                                  className="flex-1 bg-slate-900/50 border border-slate-700 rounded-lg p-2 text-sm text-white focus:border-cyan-500 outline-none"
+                                  value={variable.description}
+                                  onChange={(e) => {
+                                    const newVars = [...selectedAgent.variables];
+                                    newVars[idx].description = e.target.value;
+                                    const updated = { ...selectedAgent, variables: newVars };
+                                    setAgents(agents.map(a => a.id === selectedAgent.id ? updated : a));
+                                  }}
+                                />
+                                <input
+                                  placeholder="Ejemplo (ej. Juan)"
+                                  className="flex-1 bg-slate-900/50 border border-slate-700 rounded-lg p-2 text-sm text-white focus:border-cyan-500 outline-none"
+                                  value={variable.example}
+                                  onChange={(e) => {
+                                    const newVars = [...selectedAgent.variables];
+                                    newVars[idx].example = e.target.value;
+                                    const updated = { ...selectedAgent, variables: newVars };
+                                    setAgents(agents.map(a => a.id === selectedAgent.id ? updated : a));
+                                  }}
+                                />
+                                <button
+                                  onClick={() => {
+                                    const newVars = selectedAgent.variables.filter((_, i) => i !== idx);
+                                    const updated = { ...selectedAgent, variables: newVars };
+                                    setAgents(agents.map(a => a.id === selectedAgent.id ? updated : a));
+                                  }}
+                                  className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors border border-transparent hover:border-red-500/20"
+                                  title="Remove Variable"
+                                >
+                                  <Activity className="w-4 h-4 rotate-45" />
+                                </button>
+                              </div>
+
+                              {/* Injection Helper */}
+                              {variable.key && (
+                                <div className="flex items-center gap-2 pl-1">
+                                  <span className="text-[10px] text-slate-600">Usar en prompt:</span>
+                                  <button
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(`{{${variable.key}}}`);
+                                      // Optional: Show toast
+                                    }}
+                                    className="text-[10px] font-mono text-cyan-500 bg-cyan-950/30 px-1.5 py-0.5 rounded border border-cyan-900/50 hover:border-cyan-500/50 cursor-copy transition-all active:scale-95 flex items-center gap-1"
+                                    title="Clic para copiar etiqueta"
+                                  >
+                                    {`{{${variable.key}}}`}
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                        {(!selectedAgent.variables || selectedAgent.variables.length === 0) && (
+                          <div className="text-center p-6 border-2 border-dashed border-slate-800 rounded-xl bg-slate-900/20">
+                            <p className="text-sm text-slate-500">No hay variables personalizadas definidas aún.</p>
+                            <p className="text-xs text-slate-600 mt-1">Agrega variables como "nombre" o "monto" para personalizar tu Agente.</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={saveSelectedAgent}
+                      disabled={savingConfig}
+                      className="w-full btn-primary h-12 flex items-center justify-center gap-2"
+                    >
+                      {savingConfig ? <Loader2 className="w-5 h-5 animate-spin" /> : <span>Guardar Agente</span>}
+                    </button>
+
+                  </div>
                 </div>
-
-                <button
-                  onClick={saveConfig}
-                  disabled={savingConfig}
-                  className="w-full btn-primary h-12 flex items-center justify-center gap-2"
-                >
-                  {savingConfig ? <Loader2 className="w-5 h-5 animate-spin" /> : <span>Guardar Configuración</span>}
-                </button>
-
-              </div>
+              ) : (
+                <div className="flex h-full items-center justify-center text-slate-500">
+                  <p>Selecciona un agente para editar o crea uno nuevo.</p>
+                </div>
+              )}
             </div>
           </div>
         )

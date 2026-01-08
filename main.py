@@ -21,18 +21,23 @@ app = FastAPI()
 call_context_store = {}
 
 # Data Models
+# Data Models
 class VariableDefinition(BaseModel):
     key: str
     description: str
     example: str
 
 class AgentConfig(BaseModel):
+    id: str = "default"
+    name: str = "Nuevo Agente"
     system_prompt: str
     voice_id: str
+    language: str = "es-US"
     variables: list[VariableDefinition] = []
 
 class CallRequest(BaseModel):
     to_number: str
+    agent_id: str = "default"
     variables: dict[str, str] = {}
 
 # Allow CORS for development
@@ -45,25 +50,65 @@ app.add_middleware(
 )
 
 
-@app.get("/agent-config")
-async def get_agent_config():
-    """Get current agent configuration and available voices."""
+@app.get("/agents")
+async def get_agents():
+    """List all agents."""
     settings = SettingsManager.load_settings()
+    agents = settings.get("agents", {})
+    # Return as list for frontend convenience
     return {
-        "config": settings,
-        "available_voices": SettingsManager.get_available_voices()
+        "agents": list(agents.values()),
+        "available_voices": SettingsManager.get_available_voices(),
+        "available_languages": SettingsManager.get_available_languages()
     }
 
-@app.post("/agent-config")
-async def update_agent_config(config: AgentConfig):
-    """Update agent configuration."""
-    current_settings = SettingsManager.load_settings()
-    current_settings["system_prompt"] = config.system_prompt
-    current_settings["voice_id"] = config.voice_id
-    # Convert Pydantic models to dicts
-    current_settings["variables"] = [v.dict() for v in config.variables]
-    SettingsManager.save_settings(current_settings)
-    return {"status": "updated", "config": current_settings}
+@app.get("/agents/{agent_id}")
+async def get_agent(agent_id: str):
+    """Get specific agent details."""
+    agent = SettingsManager.get_agent(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    return agent
+
+@app.post("/agents")
+async def create_agent(config: AgentConfig):
+    """Create a new agent."""
+    import uuid
+    # If no ID provided or default, generate one (unless it's explicitly default which is reserved)
+    agent_id = config.id
+    if not agent_id or agent_id == "new":
+        agent_id = str(uuid.uuid4())
+    
+    agent_data = config.dict()
+    agent_data["id"] = agent_id
+    
+    created_agent = SettingsManager.create_agent(agent_id, agent_data)
+    return {"status": "created", "agent": created_agent}
+
+@app.put("/agents/{agent_id}")
+async def update_agent(agent_id: str, config: AgentConfig):
+    """Update an existing agent."""
+    # Validate voices
+    valid_voices = [v["id"] for v in SettingsManager.get_available_voices()]
+    if config.voice_id not in valid_voices:
+        logger.warning(f"Invalid voice_id {config.voice_id}, proceeding anyway.")
+    
+    updated_agent = SettingsManager.update_agent(agent_id, config.dict())
+    if not updated_agent:
+         raise HTTPException(status_code=404, detail="Agent not found")
+         
+    return {"status": "updated", "agent": updated_agent}
+
+@app.delete("/agents/{agent_id}")
+async def delete_agent(agent_id: str):
+    """Delete an agent."""
+    if agent_id == "default":
+        raise HTTPException(status_code=400, detail="Cannot delete default agent")
+        
+    success = SettingsManager.delete_agent(agent_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    return {"status": "deleted"}
 
 
 # Initialize Twilio Client
@@ -80,6 +125,11 @@ async def make_call(call_request: CallRequest):
         raise HTTPException(status_code=500, detail="DOMAIN env var must be set to a public URL (e.g. ngrok) for outbound calls.")
 
     try:
+        # Check if agent exists
+        agent = SettingsManager.get_agent(call_request.agent_id)
+        if not agent:
+             raise HTTPException(status_code=404, detail=f"Agent configured '{call_request.agent_id}' not found.")
+
         # The URL that Twilio will fetch when the call is answered.
         # It must scream back the TwiML to connect to the Media Stream.
         twiml_url = f"https://{settings.DOMAIN}/voice"
@@ -89,27 +139,20 @@ async def make_call(call_request: CallRequest):
             from_=settings.TWILIO_PHONE_NUMBER,
             url=twiml_url
         )
-        logger.info(f"Outbound call initiated: {call.sid}")
+        logger.info(f"Outbound call initiated: {call.sid} using Agent: {call_request.agent_id}")
         
-        # Store context (variables) for this call
-        if call_request.variables:
-            call_context_store[call.sid] = call_request.variables
-            logger.info(f"Stored context for {call.sid}: {call_request.variables}")
+        # Store context (variables + AGENT ID) for this call
+        context_data = {
+            "variables": call_request.variables,
+            "agent_id": call_request.agent_id
+        }
+        call_context_store[call.sid] = context_data
+        logger.info(f"Stored context for {call.sid}: {context_data}")
             
         return {"message": "Call initiated", "call_sid": call.sid}
     except Exception as e:
         logger.error(f"Failed to make call: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/agent-config")
-async def update_agent_config(config: AgentConfig):
-    # Validate voices
-    valid_voices = [v["id"] for v in SettingsManager.get_available_voices()]
-    if config.voice_id not in valid_voices:
-        logger.warning(f"Invalid voice_id {config.voice_id}, proceeding anyway.")
-    
-    SettingsManager.save_settings(config.model_dump())
-    return {"status": "updated"}
 
 @app.get("/voices")
 async def get_voices():
@@ -230,8 +273,11 @@ async def media_stream(websocket: WebSocket):
                 # Initialize Recorder
                 recorder = CallRecorder(call_sid)
                 
-                # Retrieve Call Variables
-                call_variables = call_context_store.get(call_sid, {})
+                # Retrieve Call Context (Variables + Agent ID)
+                context_data = call_context_store.get(call_sid, {})
+                call_variables = context_data.get("variables", {})
+                agent_id = context_data.get("agent_id", "default")
+                
                 # Cleanup context to free memory? Or keep for debug?
                 # call_context_store.pop(call_sid, None) 
                 
@@ -239,7 +285,7 @@ async def media_stream(websocket: WebSocket):
                 wrapped_ws = RecordingWebSocket(websocket, recorder)
                 
                 # Start the Pipecat bot pipeline with wrapped socket and variables
-                await run_bot(wrapped_ws, stream_sid, call_sid, call_variables)
+                await run_bot(wrapped_ws, stream_sid, call_sid, call_variables, agent_id)
                 break
                 
             elif event.get("event") == "stop":

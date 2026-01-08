@@ -32,16 +32,41 @@ DEFAULT_SETTINGS = {
 class SettingsManager:
     @staticmethod
     def load_settings() -> Dict[str, Any]:
-        """Load settings from JSON file, or return defaults if file doesn't exist."""
+        """Load settings from JSON file. Migrates old format to multi-agent format if needed."""
         if not os.path.exists(SETTINGS_FILE):
-            return DEFAULT_SETTINGS.copy()
+             # Initialize with default agent
+            initial_data = {"agents": {"default": DEFAULT_SETTINGS.copy()}}
+            # Add basic metadata to default agent
+            initial_data["agents"]["default"]["name"] = "Agente Principal"
+            initial_data["agents"]["default"]["id"] = "default"
+            SettingsManager.save_settings(initial_data)
+            return initial_data
         
         try:
             with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
+                data = json.load(f)
+                
+            # Migration Logic: Check if it's the old format (has 'system_prompt' at root)
+            if "system_prompt" in data:
+                print("Migrating single-agent settings to multi-agent format...")
+                migrated_data = {
+                    "agents": {
+                        "default": data.copy()
+                    }
+                }
+                migrated_data["agents"]["default"]["name"] = "Agente Principal" 
+                migrated_data["agents"]["default"]["id"] = "default"
+                
+                SettingsManager.save_settings(migrated_data)
+                return migrated_data
+                
+            return data
         except Exception as e:
             print(f"Error loading settings: {e}, using defaults.")
-            return DEFAULT_SETTINGS.copy()
+            initial_data = {"agents": {"default": DEFAULT_SETTINGS.copy()}}
+            initial_data["agents"]["default"]["name"] = "Agente Principal"
+            initial_data["agents"]["default"]["id"] = "default"
+            return initial_data
 
     @staticmethod
     def save_settings(settings: Dict[str, Any]) -> None:
@@ -51,6 +76,49 @@ class SettingsManager:
                 json.dump(settings, f, indent=4, ensure_ascii=False)
         except Exception as e:
             print(f"Error saving settings: {e}")
+
+    @staticmethod
+    def get_agent(agent_id: str) -> Dict[str, Any]:
+        data = SettingsManager.load_settings()
+        agents = data.get("agents", {})
+        return agents.get(agent_id, None)
+
+    @staticmethod
+    def create_agent(agent_id: str, agent_data: Dict[str, Any]) -> Dict[str, Any]:
+        data = SettingsManager.load_settings()
+        if "agents" not in data:
+            data["agents"] = {}
+        
+        # Ensure ID and Name exist
+        agent_data["id"] = agent_id
+        if "name" not in agent_data:
+            agent_data["name"] = f"Agente {len(data['agents']) + 1}"
+            
+        data["agents"][agent_id] = agent_data
+        SettingsManager.save_settings(data)
+        return agent_data
+
+    @staticmethod
+    def update_agent(agent_id: str, agent_data: Dict[str, Any]) -> Dict[str, Any]:
+        data = SettingsManager.load_settings()
+        if "agents" not in data:
+            data["agents"] = {}
+            
+        if agent_id in data["agents"]:
+            # Merge updates
+            data["agents"][agent_id].update(agent_data)
+            SettingsManager.save_settings(data)
+            return data["agents"][agent_id]
+        return None
+
+    @staticmethod
+    def delete_agent(agent_id: str) -> bool:
+        data = SettingsManager.load_settings()
+        if "agents" in data and agent_id in data["agents"]:
+            del data["agents"][agent_id]
+            SettingsManager.save_settings(data)
+            return True
+        return False
 
     @staticmethod
     def get_available_voices():

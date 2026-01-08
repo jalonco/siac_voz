@@ -35,7 +35,7 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
-async def run_bot(websocket: WebSocket, stream_sid: str, call_sid: str, call_variables: dict[str, str] = {}):
+async def run_bot(websocket: WebSocket, stream_sid: str, call_sid: str, call_variables: dict[str, str] = {}, agent_id: str = "default"):
     transport = FastAPIWebsocketTransport(
         websocket=websocket,
         params=FastAPIWebsocketParams(
@@ -54,10 +54,14 @@ async def run_bot(websocket: WebSocket, stream_sid: str, call_sid: str, call_var
     )
 
     
-    # Load Dynamic Settings
-    config = SettingsManager.load_settings()
-    voice_id = config.get("voice_id", "Charon")
-    system_instruction = config.get("system_prompt", "")
+    # Load Specific Agent Settings
+    agent_config = SettingsManager.get_agent(agent_id)
+    if not agent_config:
+        logger.error(f"Agent {agent_id} not found, falling back to default.")
+        agent_config = SettingsManager.get_agent("default") or {}
+
+    voice_id = agent_config.get("voice_id", "Charon")
+    system_instruction = agent_config.get("system_prompt", "")
     
     # Inject Dynamic Variables
     # Replace {{key}} with value
