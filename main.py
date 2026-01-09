@@ -137,7 +137,9 @@ async def make_call(call_request: CallRequest):
         call = twilio_client.calls.create(
             to=call_request.to_number,
             from_=settings.TWILIO_PHONE_NUMBER,
-            url=twiml_url
+            url=twiml_url,
+            machine_detection='Enable', # Detect voicemail
+            time_limit=600 # 10 minutes max duration
         )
         logger.info(f"Outbound call initiated: {call.sid} using Agent: {call_request.agent_id}")
         
@@ -297,6 +299,15 @@ async def voice_handler(request: Request):
     
     # Trust X-Forwarded-Proto header from Traefik
     forwarded_proto = request.headers.get("x-forwarded-proto")
+
+    # Check for Voicemail
+    form_data = await request.form()
+    answered_by = form_data.get("AnsweredBy")
+    if answered_by and answered_by.lower() in ["machine_start", "machine_end_beep", "machine_end_silence", "machine_end_other"]:
+         logger.info(f"Machine detected ({answered_by}), hanging up.")
+         response.hangup()
+         return Response(content=str(response), media_type="application/xml")
+
     if forwarded_proto:
         ws_scheme = "wss" if forwarded_proto == "https" else "ws"
     else:

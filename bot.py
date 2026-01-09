@@ -17,6 +17,32 @@ from pipecat.transports.network.fastapi_websocket import (
     FastAPIWebsocketParams,
     FastAPIWebsocketTransport,
 )
+from pipecat.processors.frame_processor import FrameProcessor
+from pipecat.frames.frames import UserAudioFrame, EndFrame, VADParams
+import time
+
+class SilenceTimeout(FrameProcessor):
+    def __init__(self, timeout=50):
+        super().__init__()
+        self.timeout = timeout
+        self.last_speech = time.time()
+        self.monitoring = True
+
+    async def process_frame(self, frame, direction):
+        await super().process_frame(frame, direction)
+
+        if isinstance(frame, UserAudioFrame):
+             self.last_speech = time.time()
+        
+        # Check timeout on every frame (or could serve as a heartbeat check)
+        if self.monitoring and (time.time() - self.last_speech > self.timeout):
+             logger.warning(f"Silence timeout reached ({self.timeout}s). Ending call.")
+             yield EndFrame()
+             self.monitoring = False # Stop monitoring
+             return
+
+        yield frame
+
 from settings_manager import SettingsManager
 from transcript_logger import TranscriptLogger
 
@@ -93,11 +119,16 @@ async def run_bot(websocket: WebSocket, stream_sid: str, call_sid: str, call_var
     # transport.input() -> llm -> transport.output()
     
     # Initialize Transcript Logger
+    # Initialize Transcript Logger
     transcript_logger = TranscriptLogger(call_sid)
+    
+    # Initialize Silence Timeout (50s)
+    silence_timeout = SilenceTimeout(timeout=50)
 
     pipeline = Pipeline(
         [
             transport.input(),
+            silence_timeout, # Check for user silence immediately after transport input
             llm,
             transcript_logger, # Logs frames from LLM (content) and user (transcriptions)
             transport.output(),

@@ -262,7 +262,7 @@ function App() {
 
       {/* Navbar */}
       <nav className="border-b border-white/5 bg-slate-900/50 backdrop-blur-md sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+        <div className="max-w-[90rem] mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-blue-500/20">
               <Activity className="w-5 h-5 text-white" />
@@ -302,7 +302,7 @@ function App() {
         </div>
       </nav>
 
-      <main className="max-w-6xl mx-auto px-4 py-8 relative z-10">
+      <main className="max-w-[90rem] mx-auto px-4 py-8 relative z-10">
 
         {activeTab === 'dialer' && (
           <div className="flex flex-col items-center justify-center min-h-[60vh]">
@@ -800,7 +800,8 @@ function App() {
                             fontSize: 14,
                             minHeight: '300px',
                             backgroundColor: 'transparent',
-                            color: '#f8fafc'
+                            color: '#f8fafc',
+                            lineHeight: '1.5' // Ensure consistent line height
                           }}
                           textareaClassName="focus:outline-none"
                         />
