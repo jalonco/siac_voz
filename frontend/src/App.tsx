@@ -8,6 +8,7 @@ import { highlight, languages } from 'prismjs/components/prism-core';
 import 'prismjs/components/prism-clike';
 import 'prismjs/components/prism-javascript';
 import 'prismjs/themes/prism-dark.css'; // Or custom style
+import { Toaster, toast } from 'sonner';
 import { AudioPlayer } from './components/AudioPlayer';
 import { TranscriptionView } from './components/TranscriptionView';
 
@@ -141,10 +142,10 @@ function App() {
       const res = await axios.put(`${API_URL}/agents/${selectedAgent.id}`, selectedAgent);
       // Update local list
       setAgents(agents.map(a => a.id === selectedAgent.id ? res.data.agent : a));
-      alert('¡Agente guardado!');
+      toast.success('¡Agente guardado correctamente!');
     } catch (err) {
       console.error("Failed to save agent", err);
-      alert('Error al guardar agente.');
+      toast.error('Error al guardar agente.');
     } finally {
       setSavingConfig(false);
     }
@@ -166,9 +167,10 @@ function App() {
       const newAgent = res.data.agent;
       setAgents([...agents, newAgent]);
       setSelectedAgentId(newAgent.id);
+      toast.success('Agente creado correctamente');
     } catch (err) {
       console.error("Error creating agent", err);
-      alert("Error al crear agente");
+      toast.error("Error al crear agente");
     }
   }
 
@@ -184,9 +186,10 @@ function App() {
       const newAgents = agents.filter(a => a.id !== selectedAgent.id);
       setAgents(newAgents);
       setSelectedAgentId(newAgents[0]?.id || null);
+      toast.success('Agente eliminado correctamente');
     } catch (err) {
       console.error("Error deleting agent", err);
-      alert("Error al eliminar agente");
+      toast.error("Error al eliminar agente");
     }
   }
 
@@ -227,6 +230,7 @@ function App() {
 
       // We don't use callSid in UI currently, so just ignore response data
       setStatus('connected');
+      toast.success(`Llamando a ${formattedNumber}...`);
 
       setTimeout(() => {
         setStatus('idle');
@@ -236,7 +240,9 @@ function App() {
     } catch (err: any) {
       console.error(err);
       setStatus('error');
-      setErrorMsg(err.response?.data?.detail || 'Error al iniciar llamada');
+      const msg = err.response?.data?.detail || 'Error al iniciar llamada';
+      toast.error(msg);
+      setErrorMsg(msg);
     }
   };
 
@@ -256,6 +262,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-[#0f172a] to-black text-white font-sans overflow-x-hidden">
+      <Toaster richColors position="top-right" theme="dark" />
 
       {/* Background Ambience */}
       <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-blue-500/10 rounded-[100%] blur-[100px] pointer-events-none" />
