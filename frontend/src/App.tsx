@@ -493,8 +493,8 @@ function App() {
                         <PhoneCall className="w-6 h-6" />
                       </div>
                       <div>
-                        <p className="text-slate-400 text-sm font-medium">Total Llamadas</p>
-                        <h3 className="text-2xl font-bold">{totalCalls}</h3>
+                        <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">Total Llamadas</p>
+                        <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{totalCalls}</h3>
                       </div>
                     </div>
                   </div>
@@ -505,8 +505,8 @@ function App() {
                         <Timer className="w-6 h-6" />
                       </div>
                       <div>
-                        <p className="text-slate-400 text-sm font-medium">Duración Total</p>
-                        <h3 className="text-2xl font-bold">{Math.floor(totalDuration / 60)}m {totalDuration % 60}s</h3>
+                        <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">Duración Total</p>
+                        <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{Math.floor(totalDuration / 60)}m {totalDuration % 60}s</h3>
                       </div>
                     </div>
                   </div>
@@ -517,8 +517,8 @@ function App() {
                         <DollarSign className="w-6 h-6" />
                       </div>
                       <div>
-                        <p className="text-slate-400 text-sm font-medium">Costo Estimado</p>
-                        <h3 className="text-2xl font-bold">${totalCost.toFixed(4)}</h3>
+                        <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">Costo Estimado</p>
+                        <h3 className="text-2xl font-bold text-slate-900 dark:text-white">${totalCost.toFixed(4)}</h3>
                       </div>
                     </div>
                   </div>
@@ -527,7 +527,7 @@ function App() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   {/* Chart */}
                   <div className="glass-panel p-6 rounded-2xl border border-slate-700/50 lg:col-span-1">
-                    <h3 className="font-semibold mb-6 flex items-center gap-2">
+                    <h3 className="font-semibold mb-6 flex items-center gap-2 text-slate-900 dark:text-white">
                       <BarChart3 className="w-4 h-4 text-cyan-400" />
                       Estado de Llamada
                     </h3>
@@ -552,12 +552,12 @@ function App() {
 
                   {/* Table */}
                   <div className="glass-panel p-0 rounded-2xl border border-slate-700/50 lg:col-span-2 overflow-hidden">
-                    <div className="p-6 border-b border-white/5">
-                      <h3 className="font-semibold">Registros Recientes</h3>
+                    <div className="p-6 border-b border-slate-200 dark:border-white/5 bg-slate-50/50 dark:bg-transparent">
+                      <h3 className="font-semibold text-slate-900 dark:text-white">Registros Recientes</h3>
                     </div>
                     <div className="overflow-x-auto">
-                      <table className="w-full text-left text-sm text-slate-400">
-                        <thead className="bg-slate-900/50 text-slate-200 uppercase tracking-wider text-xs">
+                      <table className="w-full text-left text-sm text-slate-600 dark:text-slate-400">
+                        <thead className="bg-slate-100 dark:bg-slate-900/50 text-slate-700 dark:text-slate-200 uppercase tracking-wider text-xs border-b border-slate-200 dark:border-white/5">
                           <tr>
                             <th className="px-6 py-4 font-medium">Estado</th>
                             <th className="px-6 py-4 font-medium">Fecha</th>
@@ -585,8 +585,8 @@ function App() {
                               </td>
                               <td className="px-6 py-4">
                                 <div className="flex flex-col">
-                                  <span className="text-white flex items-center gap-1">
-                                    {call.direction === 'outbound-api' ? <ArrowUpRight className="w-3 h-3 text-blue-400" /> : <ArrowDownLeft className="w-3 h-3 text-emerald-400" />}
+                                  <span className="text-slate-900 dark:text-white flex items-center gap-1">
+                                    {call.direction === 'outbound-api' ? <ArrowUpRight className="w-3 h-3 text-blue-500 dark:text-blue-400" /> : <ArrowDownLeft className="w-3 h-3 text-emerald-500 dark:text-emerald-400" />}
                                     {call.to}
                                   </span>
                                   <span className="text-xs opacity-50">{call.from}</span>
@@ -679,7 +679,7 @@ function App() {
 
                   {/* Agent Name Input */}
                   <div className="mb-6">
-                    <label className="block text-sm font-medium text-slate-400 mb-2">Nombre del Agente</label>
+                    <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Nombre del Agente</label>
                     <div className="flex gap-2">
                       <input
                         value={selectedAgent.name}
@@ -696,7 +696,7 @@ function App() {
                   <div className="space-y-8">
                     {/* Language Selector */}
                     <div>
-                      <label className="block text-sm font-medium text-slate-400 mb-4 flex items-center gap-2">
+                      <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-4 flex items-center gap-2">
                         <Globe className="w-4 h-4" />
                         Idioma del Agente
                         Idioma del Agente
@@ -718,7 +718,7 @@ function App() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-slate-400 mb-4 flex items-center gap-2">
+                      <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-4 flex items-center gap-2">
                         <User className="w-4 h-4" />
                         Modelo de Voz ({availableVoices.length})
                       </label>
@@ -804,7 +804,7 @@ function App() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-slate-400 mb-2">System Prompt</label>
+                      <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">System Prompt</label>
                       <div className="bg-slate-950 border border-slate-800 rounded-lg overflow-hidden focus-within:border-cyan-500 transition-colors shadow-inner">
                         <Editor
                           value={selectedAgent.system_prompt}
@@ -832,7 +832,7 @@ function App() {
                     <div className="space-y-4 border-t border-slate-700 pt-6">
                       <div className="flex items-center justify-between">
                         <div className="flex flex-col">
-                          <label className="block text-sm font-medium text-slate-400">Variables Dinámicas</label>
+                          <label className="block text-sm font-medium text-slate-600 dark:text-slate-400">Variables Dinámicas</label>
                           <span className="text-xs text-slate-500">Define datos que cambian por llamada (ej. nombre, deuda)</span>
                         </div>
                         <button
