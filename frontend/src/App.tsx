@@ -551,13 +551,13 @@ function App() {
                   </div>
 
                   {/* Table */}
-                  <div className="glass-panel p-0 rounded-2xl border border-slate-700/50 lg:col-span-2 overflow-hidden">
-                    <div className="p-6 border-b border-slate-200 dark:border-white/5 bg-slate-50/50 dark:bg-transparent">
+                  <div className="glass-panel p-0 rounded-2xl border border-slate-300 shadow-sm dark:border-slate-700/50 dark:shadow-none lg:col-span-2 overflow-hidden transition-colors">
+                    <div className="p-6 border-b border-slate-300 dark:border-white/5 bg-slate-100/50 dark:bg-transparent">
                       <h3 className="font-semibold text-slate-900 dark:text-white">Registros Recientes</h3>
                     </div>
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-sm text-slate-600 dark:text-slate-400">
-                        <thead className="bg-slate-100 dark:bg-slate-900/50 text-slate-700 dark:text-slate-200 uppercase tracking-wider text-xs border-b border-slate-200 dark:border-white/5">
+                        <thead className="bg-slate-200/60 dark:bg-slate-900/50 text-slate-700 dark:text-slate-200 uppercase tracking-wider text-xs border-b border-slate-300 dark:border-white/5">
                           <tr>
                             <th className="px-6 py-4 font-medium">Estado</th>
                             <th className="px-6 py-4 font-medium">Fecha</th>
@@ -567,9 +567,9 @@ function App() {
                             <th className="px-6 py-4 font-medium text-right">Acciones</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-white/5">
+                        <tbody className="divide-y divide-slate-200 dark:divide-white/5">
                           {calls.map((call) => (
-                            <tr key={call.sid} className="hover:bg-white/5 transition-colors">
+                            <tr key={call.sid} className="hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
                               <td className="px-6 py-4">
                                 <span className={clsx(
                                   "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize",
