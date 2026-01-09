@@ -310,6 +310,7 @@ function App() {
                   : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
               )}
             >
+              Configuración
             </button>
           </div>
 
