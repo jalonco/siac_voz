@@ -29,8 +29,8 @@ class SilenceTimeout(FrameProcessor):
         self.monitoring = True
 
     async def process_frame(self, frame, direction):
-        await super().process_frame(frame, direction)
-
+        # await super().process_frame(frame, direction) - Don't await generator
+        
         if isinstance(frame, (InputAudioRawFrame, UserStartedSpeakingFrame)):
              self.last_speech = time.time()
         
