@@ -10,7 +10,8 @@ from loguru import logger
 from google.cloud import storage
 
 # Constants
-KEY_FILE = "mundimotos-481115-c652dd31ca7c.json"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+KEY_FILE = os.path.join(BASE_DIR, "mundimotos-481115-c652dd31ca7c.json")
 BUCKET_NAME = "asistente-siac-voz-logs"
 
 class CallRecorder:
