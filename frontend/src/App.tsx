@@ -744,8 +744,8 @@ function App() {
                                   selectedAgent.voice_id === voice.id
                                     ? "bg-cyan-500/20 text-cyan-400"
                                     : voice.gender === 'Female'
-                                      ? "bg-pink-500/10 text-pink-400"
-                                      : "bg-blue-500/10 text-blue-400"
+                                      ? "bg-pink-100 text-pink-600 dark:bg-pink-500/10 dark:text-pink-400"
+                                      : "bg-blue-100 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400"
                                 )}>
                                   <User className="w-5 h-5" />
                                 </div>
@@ -757,8 +757,8 @@ function App() {
                                     <span className={clsx(
                                       "text-[10px] px-1.5 py-0.5 rounded-full font-medium",
                                       voice.gender === 'Female'
-                                        ? "bg-pink-500/20 text-pink-300"
-                                        : "bg-blue-500/20 text-blue-300"
+                                        ? "bg-pink-100 text-pink-700 dark:bg-pink-500/20 dark:text-pink-300"
+                                        : "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300"
                                     )}>
                                       {voice.gender === 'Female' ? 'Mujer' : 'Hombre'}
                                     </span>
@@ -787,10 +787,8 @@ function App() {
                                   "w-8 h-8 rounded-full flex items-center justify-center transition-colors",
                                   playingVoice === voice.id
                                     ? "bg-cyan-500 text-white animate-pulse"
-                                    : "bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white"
-                                )}
-                                title="Escuchar previa"
-                              >
+                                    : "bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white"
+                                )}>
                                 {playingVoice === voice.id ? (
                                   <div className="w-3 h-3 bg-white rounded-sm" /> // Stop icon approximation
                                 ) : (
