@@ -134,7 +134,6 @@ async def run_bot(websocket: WebSocket, stream_sid: str, call_sid: str, call_var
             transport.output(),
         ]
     )
-    )
 
     task = PipelineTask(
         pipeline,
