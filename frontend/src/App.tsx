@@ -622,9 +622,9 @@ function App() {
           <div className="flex min-h-[70vh] gap-6 max-w-7xl mx-auto w-full">
             {/* Sidebar: Agent List */}
             <div className="w-64 flex-shrink-0 flex flex-col gap-4">
-              <div className="glass-panel p-4 rounded-2xl border border-slate-700/50 flex flex-col h-full opacity-90">
+              <div className="glass-panel p-4 rounded-2xl border border-slate-200 dark:border-slate-700/50 flex flex-col h-full opacity-90 transition-colors duration-300">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="font-semibold text-slate-200">Mis Agentes</h2>
+                  <h2 className="font-semibold text-slate-700 dark:text-slate-200">Mis Agentes</h2>
                   <button onClick={createAgent} className="p-1.5 bg-cyan-500/20 text-cyan-400 rounded-lg hover:bg-cyan-500/30 transition-colors">
                     <Plus className="w-4 h-4" />
                   </button>
@@ -639,17 +639,17 @@ function App() {
                         "p-3 rounded-xl border cursor-pointer transition-all flex items-center gap-3",
                         selectedAgentId === agent.id
                           ? "bg-cyan-500/10 border-cyan-500/50 shadow-sm shadow-cyan-900/20"
-                          : "bg-slate-800/30 border-transparent hover:bg-slate-800"
+                          : "bg-white border-slate-200 hover:bg-slate-50 dark:bg-slate-800/30 dark:border-transparent dark:hover:bg-slate-800"
                       )}
                     >
                       <div className={clsx(
-                        "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold",
-                        selectedAgentId === agent.id ? "bg-cyan-500 text-white" : "bg-slate-700 text-slate-400"
+                        "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors",
+                        selectedAgentId === agent.id ? "bg-cyan-500 text-white" : "bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-400"
                       )}>
                         {agent.name.charAt(0)}
                       </div>
                       <div className="overflow-hidden">
-                        <h4 className={clsx("text-sm font-medium truncate", selectedAgentId === agent.id ? "text-cyan-100" : "text-slate-400")}>{agent.name}</h4>
+                        <h4 className={clsx("text-sm font-medium truncate", selectedAgentId === agent.id ? "text-cyan-600 dark:text-cyan-100" : "text-slate-700 dark:text-slate-400")}>{agent.name}</h4>
                         <p className="text-[10px] text-slate-500 truncate">{agent.id === 'default' ? 'Principal' : 'Agente Personal'}</p>
                       </div>
                     </div>
@@ -664,7 +664,7 @@ function App() {
                 <div className="glass-panel rounded-3xl p-8 border border-slate-700/50 relative animate-in fade-in slide-in-from-right-4 duration-300">
                   <div className="flex items-center justify-between mb-8">
                     <div>
-                      <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
+                      <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-400">
                         Editar: {selectedAgent.name}
                       </h1>
                       <p className="text-slate-500 mt-1">Personaliza la Persona y Voz</p>
@@ -698,9 +698,10 @@ function App() {
                       <label className="block text-sm font-medium text-slate-400 mb-4 flex items-center gap-2">
                         <Globe className="w-4 h-4" />
                         Idioma del Agente
+                        Idioma del Agente
                       </label>
                       <select
-                        className="w-full bg-slate-900/50 border border-slate-700 rounded-lg p-3 text-white focus:outline-none focus:border-cyan-500 transition-colors"
+                        className="w-full bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500 transition-colors"
                         value={selectedAgent.language || 'es-US'}
                         onChange={(e) => {
                           const updated = { ...selectedAgent, language: e.target.value };
@@ -803,7 +804,7 @@ function App() {
 
                     <div>
                       <label className="block text-sm font-medium text-slate-400 mb-2">System Prompt</label>
-                      <div className="bg-slate-900/50 border border-slate-700 rounded-lg overflow-hidden focus-within:border-cyan-500 transition-colors">
+                      <div className="bg-slate-950 border border-slate-800 rounded-lg overflow-hidden focus-within:border-cyan-500 transition-colors shadow-inner">
                         <Editor
                           value={selectedAgent.system_prompt}
                           onValueChange={code => {
@@ -838,7 +839,7 @@ function App() {
                             const updated = { ...selectedAgent, variables: [...(selectedAgent.variables || []), { key: '', description: '', example: '' }] };
                             setAgents(agents.map(a => a.id === selectedAgent.id ? updated : a));
                           }}
-                          className="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-md transition-colors text-cyan-400 border border-slate-700 hover:border-cyan-500/50"
+                          className="text-xs bg-white hover:bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 dark:border-slate-700 px-3 py-1.5 rounded-md transition-colors text-cyan-600 dark:text-cyan-400 hover:border-cyan-400/50"
                         >
                           + Agregar Variable
                         </button>
@@ -851,9 +852,9 @@ function App() {
                             <Activity className="w-3 h-3 text-blue-400" />
                           </div>
                           <div>
-                            <span className="font-semibold text-blue-300 block mb-1">Cómo usar variables:</span>
-                            <ol className="list-decimal list-inside space-y-1 ml-1 text-slate-500">
-                              <li>Define una variable abajo (ej. Clave: <span className="text-cyan-400 font-mono">nombre</span>).</li>
+                            <span className="font-semibold text-blue-600 dark:text-blue-300 block mb-1">Cómo usar variables:</span>
+                            <ol className="list-decimal list-inside space-y-1 ml-1 text-slate-600 dark:text-slate-500">
+                              <li>Define una variable abajo (ej. Clave: <span className="text-cyan-600 dark:text-cyan-400 font-mono">nombre</span>).</li>
                               <li>Copia la etiqueta <span className="inline-block px-1 bg-slate-800 rounded text-cyan-400 font-mono transform scale-90 text-[10px]">{`{{nombre}}`}</span>.</li>
                               <li>Pégala en tu <strong>System Prompt</strong> arriba donde quieras que aparezca el valor.</li>
                             </ol>
@@ -868,7 +869,7 @@ function App() {
                               <div className="flex gap-2">
                                 <input
                                   placeholder="Clave (ej. nombre)"
-                                  className="w-1/3 bg-slate-900/50 border border-slate-700 rounded-lg p-2 text-sm text-white focus:border-cyan-500 outline-none font-mono"
+                                  className="w-1/3 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-sm text-slate-900 dark:text-white focus:border-cyan-500 outline-none font-mono transition-colors"
                                   value={variable.key}
                                   onChange={(e) => {
                                     const newVars = [...selectedAgent.variables];
@@ -879,7 +880,7 @@ function App() {
                                 />
                                 <input
                                   placeholder="Descripción (ej. Nombre Cliente)"
-                                  className="flex-1 bg-slate-900/50 border border-slate-700 rounded-lg p-2 text-sm text-white focus:border-cyan-500 outline-none"
+                                  className="flex-1 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-sm text-slate-900 dark:text-white focus:border-cyan-500 outline-none transition-colors"
                                   value={variable.description}
                                   onChange={(e) => {
                                     const newVars = [...selectedAgent.variables];
@@ -890,7 +891,7 @@ function App() {
                                 />
                                 <input
                                   placeholder="Ejemplo (ej. Juan)"
-                                  className="flex-1 bg-slate-900/50 border border-slate-700 rounded-lg p-2 text-sm text-white focus:border-cyan-500 outline-none"
+                                  className="flex-1 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-sm text-slate-900 dark:text-white focus:border-cyan-500 outline-none transition-colors"
                                   value={variable.example}
                                   onChange={(e) => {
                                     const newVars = [...selectedAgent.variables];
@@ -905,7 +906,7 @@ function App() {
                                     const updated = { ...selectedAgent, variables: newVars };
                                     setAgents(agents.map(a => a.id === selectedAgent.id ? updated : a));
                                   }}
-                                  className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors border border-transparent hover:border-red-500/20"
+                                  className="p-2 text-red-500 dark:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors border border-transparent hover:border-red-500/20"
                                   title="Remove Variable"
                                 >
                                   <Activity className="w-4 h-4 rotate-45" />
@@ -932,9 +933,9 @@ function App() {
                           </div>
                         ))}
                         {(!selectedAgent.variables || selectedAgent.variables.length === 0) && (
-                          <div className="text-center p-6 border-2 border-dashed border-slate-800 rounded-xl bg-slate-900/20">
+                          <div className="text-center p-6 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900/20">
                             <p className="text-sm text-slate-500">No hay variables personalizadas definidas aún.</p>
-                            <p className="text-xs text-slate-600 mt-1">Agrega variables como "nombre" o "monto" para personalizar tu Agente.</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-600 mt-1">Agrega variables como "nombre" o "monto" para personalizar tu Agente.</p>
                           </div>
                         )}
                       </div>
