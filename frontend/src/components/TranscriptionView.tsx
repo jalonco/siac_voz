@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import { User, Bot, HelpCircle, Smile } from 'lucide-react';
+import { User, HelpCircle, Smile } from 'lucide-react';
 
 interface TranscriptionEntry {
     timestamp: string; // ISO string 
