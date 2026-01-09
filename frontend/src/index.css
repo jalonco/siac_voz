@@ -4,12 +4,12 @@
 
 @layer base {
   body {
-    @apply bg-slate-950 text-white antialiased;
+    @apply bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-white antialiased transition-colors duration-300;
   }
 }
 
 .glass-panel {
-  @apply bg-slate-900/60 backdrop-blur-xl border border-white/10 shadow-2xl;
+  @apply bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200 dark:border-white/10 shadow-2xl transition-colors duration-300;
 }
 
 .btn-primary {
@@ -17,13 +17,20 @@
 }
 
 .input-field {
-  @apply w-full bg-slate-800/50 border border-slate-700/50 rounded-xl px-4 py-3 text-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all placeholder-slate-500 text-center tracking-widest;
+  @apply w-full bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 rounded-xl px-4 py-3 text-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all placeholder-slate-400 dark:placeholder-slate-500 text-center tracking-widest text-slate-900 dark:text-white;
 }
 
 /* Animations */
 @keyframes pulse-ring {
-  0% { transform: scale(0.8); opacity: 0.5; }
-  100% { transform: scale(2); opacity: 0; }
+  0% {
+    transform: scale(0.8);
+    opacity: 0.5;
+  }
+
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
 }
 
 .animate-pulse-ring {

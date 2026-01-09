@@ -66,8 +66,8 @@ export function AudioPlayer({ url }: AudioPlayerProps) {
     };
 
     return (
-        <div className="glass-panel p-6 rounded-2xl border border-slate-700/50 bg-slate-900/80">
-            <h3 className="font-semibold text-lg mb-4 text-white">Reproductor Interactivo</h3>
+        <div className="glass-panel p-6 rounded-2xl border border-slate-200 dark:border-slate-700/50 bg-white/80 dark:bg-slate-900/80">
+            <h3 className="font-semibold text-lg mb-4 text-slate-900 dark:text-white">Reproductor Interactivo</h3>
 
             <div className="flex items-center gap-4">
                 <button
@@ -90,7 +90,7 @@ export function AudioPlayer({ url }: AudioPlayerProps) {
                 <div className="flex-1 space-y-2">
                     <div ref={containerRef} className="w-full" />
 
-                    <div className="flex justify-between text-xs text-slate-400 font-mono">
+                    <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400 font-mono">
                         <span>{currentTime}</span>
                         <span>{duration}</span>
                     </div>

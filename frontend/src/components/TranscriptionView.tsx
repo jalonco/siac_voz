@@ -37,7 +37,7 @@ export function TranscriptionView({ entries, startTime }: TranscriptionViewProps
 
     return (
         <div className="space-y-6">
-            <h3 className="font-semibold text-lg text-white">Transcripción y Análisis de Tono</h3>
+            <h3 className="font-semibold text-lg text-slate-900 dark:text-white">Transcripción y Análisis de Tono</h3>
 
             <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
                 {entries.map((entry, idx) => {
@@ -47,17 +47,20 @@ export function TranscriptionView({ entries, startTime }: TranscriptionViewProps
                         <div
                             key={idx}
                             className={clsx(
-                                "p-4 rounded-xl border-l-4 transition-all hover:bg-white/5",
+                                "p-4 rounded-xl border-l-4 transition-all hover:bg-slate-50 dark:hover:bg-white/5",
                                 isAgent
-                                    ? "bg-slate-800/40 border-emerald-500"
-                                    : "bg-slate-800/40 border-blue-500"
+                                    ? "bg-white border-slate-200 dark:bg-slate-800/40 dark:border-emerald-500"
+                                    : "bg-white border-slate-200 dark:bg-slate-800/40 dark:border-blue-500"
                             )}
+                            style={{
+                                borderLeftColor: isAgent ? '#10b981' : '#3b82f6' // Helper for light mode border color
+                            }}
                         >
                             <div className="flex items-center justify-between mb-2">
                                 <div className="flex items-center gap-2">
                                     <span className={clsx(
                                         "font-bold text-sm",
-                                        isAgent ? "text-emerald-400" : "text-blue-400"
+                                        isAgent ? "text-emerald-600 dark:text-emerald-400" : "text-blue-600 dark:text-blue-400"
                                     )}>
                                         {isAgent ? "Agente" : "Cliente"}
                                     </span>
@@ -68,12 +71,12 @@ export function TranscriptionView({ entries, startTime }: TranscriptionViewProps
 
                                 <div className="flex items-center gap-2 opacity-50">
                                     {/* Placeholder for sentiment/emotion if we had it */}
-                                    {isAgent ? <Smile className="w-4 h-4 text-emerald-400" /> : <User className="w-4 h-4 text-blue-400" />}
-                                    <HelpCircle className="w-4 h-4 text-slate-600" />
+                                    {isAgent ? <Smile className="w-4 h-4 text-emerald-500 dark:text-emerald-400" /> : <User className="w-4 h-4 text-blue-500 dark:text-blue-400" />}
+                                    <HelpCircle className="w-4 h-4 text-slate-400 dark:text-slate-600" />
                                 </div>
                             </div>
 
-                            <p className="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap">
+                            <p className="text-slate-700 dark:text-slate-300 text-sm leading-relaxed whitespace-pre-wrap">
                                 {entry.content}
                             </p>
                         </div>

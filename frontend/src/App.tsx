@@ -9,6 +9,7 @@ import 'prismjs/components/prism-clike';
 import 'prismjs/components/prism-javascript';
 import 'prismjs/themes/prism-dark.css'; // Or custom style
 import { Toaster, toast } from 'sonner';
+import { ThemeToggle } from './components/ThemeToggle';
 import { AudioPlayer } from './components/AudioPlayer';
 import { TranscriptionView } from './components/TranscriptionView';
 
@@ -261,14 +262,14 @@ function App() {
   const chartData = Object.keys(statusData).map(key => ({ name: key, value: statusData[key] }));
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-[#0f172a] to-black text-white font-sans overflow-x-hidden">
+    <div className="min-h-screen bg-slate-50 dark:bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] dark:from-slate-900 dark:via-[#0f172a] dark:to-black text-slate-900 dark:text-white font-sans overflow-x-hidden transition-colors duration-300">
       <Toaster richColors position="top-right" theme="dark" />
 
       {/* Background Ambience */}
       <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-blue-500/10 rounded-[100%] blur-[100px] pointer-events-none" />
 
       {/* Navbar */}
-      <nav className="border-b border-white/5 bg-slate-900/50 backdrop-blur-md sticky top-0 z-50">
+      <nav className="border-b border-slate-200 dark:border-white/5 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md sticky top-0 z-50 transition-colors duration-300">
         <div className="max-w-[90rem] mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-blue-500/20">
@@ -282,7 +283,9 @@ function App() {
               onClick={() => setActiveTab('dialer')}
               className={clsx(
                 "px-4 py-1.5 rounded-md text-sm font-medium transition-all",
-                activeTab === 'dialer' ? "bg-slate-700 text-white shadow-sm" : "text-slate-400 hover:text-white"
+                activeTab === 'dialer'
+                  ? "bg-slate-700 text-white shadow-sm dark:bg-slate-700"
+                  : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
               )}
             >
               Marcador
@@ -291,7 +294,9 @@ function App() {
               onClick={() => setActiveTab('analytics')}
               className={clsx(
                 "px-4 py-1.5 rounded-md text-sm font-medium transition-all",
-                activeTab === 'analytics' ? "bg-slate-700 text-white shadow-sm" : "text-slate-400 hover:text-white"
+                activeTab === 'analytics'
+                  ? "bg-slate-700 text-white shadow-sm dark:bg-slate-700"
+                  : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
               )}
             >
               Analíticas
@@ -300,11 +305,17 @@ function App() {
               onClick={() => setActiveTab('config')}
               className={clsx(
                 "px-4 py-1.5 rounded-md text-sm font-medium transition-all",
-                activeTab === 'config' ? "bg-slate-700 text-white shadow-sm" : "text-slate-400 hover:text-white"
+                activeTab === 'config'
+                  ? "bg-slate-700 text-white shadow-sm dark:bg-slate-700"
+                  : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
               )}
             >
-              Configuración
             </button>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <ThemeToggle />
+            {/* Existing right-side actions if any, or just end of navbar */}
           </div>
         </div>
       </nav>
@@ -721,7 +732,7 @@ function App() {
                               "relative p-4 rounded-xl border cursor-pointer transition-all hover:scale-[1.02]",
                               selectedAgent.voice_id === voice.id
                                 ? "bg-cyan-500/10 border-cyan-500 ring-1 ring-cyan-500/50"
-                                : "bg-slate-900/50 border-slate-700 hover:border-slate-500"
+                                : "bg-white border-slate-200 hover:border-slate-400 dark:bg-slate-900/50 dark:border-slate-700 dark:hover:border-slate-500"
                             )}
                           >
                             <div className="flex items-center justify-between">
@@ -737,7 +748,7 @@ function App() {
                                   <User className="w-5 h-5" />
                                 </div>
                                 <div>
-                                  <h4 className={clsx("font-medium", selectedAgent.voice_id === voice.id ? "text-cyan-400" : "text-white")}>
+                                  <h4 className={clsx("font-medium", selectedAgent.voice_id === voice.id ? "text-cyan-600 dark:text-cyan-400" : "text-slate-900 dark:text-white")}>
                                     {voice.name}
                                   </h4>
                                   <div className="flex items-center gap-2 mt-0.5">
@@ -801,7 +812,7 @@ function App() {
                           }}
                           highlight={highlightWithVariables}
                           padding={16}
-                          className="font-mono text-sm leading-6"
+                          className="font-mono text-sm leading-6 dark:text-slate-200"
                           style={{
                             fontFamily: '"Fira code", "Fira Mono", monospace',
                             fontSize: 14,
