@@ -18,7 +18,7 @@ from pipecat.transports.network.fastapi_websocket import (
     FastAPIWebsocketTransport,
 )
 from pipecat.processors.frame_processor import FrameProcessor
-from pipecat.frames.frames import UserAudioFrame, EndFrame, VADParams
+from pipecat.frames.frames import InputAudioRawFrame, UserStartedSpeakingFrame, EndFrame
 import time
 
 class SilenceTimeout(FrameProcessor):
@@ -31,7 +31,7 @@ class SilenceTimeout(FrameProcessor):
     async def process_frame(self, frame, direction):
         await super().process_frame(frame, direction)
 
-        if isinstance(frame, UserAudioFrame):
+        if isinstance(frame, (InputAudioRawFrame, UserStartedSpeakingFrame)):
              self.last_speech = time.time()
         
         # Check timeout on every frame (or could serve as a heartbeat check)
