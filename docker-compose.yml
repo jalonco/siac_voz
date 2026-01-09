@@ -2,7 +2,9 @@ version: '3.8'
 
 services:
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: siac_voz
     restart: unless-stopped
     env_file:

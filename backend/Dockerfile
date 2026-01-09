@@ -15,11 +15,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python deps
-COPY requirements.txt .
+COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy Backend Code
-COPY . .
+COPY backend/ .
 
 # Copy Built Frontend (Assumes it exists locally/uploaded)
 # We copy it to where main.py expects it (variable static mounting)
