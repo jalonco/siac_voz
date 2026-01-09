@@ -217,6 +217,75 @@ async def get_voice_preview(voice_id: str):
         logger.error(f"Failed to stream preview: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/calls/{call_sid}/recording")
+async def get_call_recording(call_sid: str):
+    """
+    Proxy call recording from GCS.
+    """
+    try:
+        from google.cloud import storage
+        from recorder import KEY_FILE, BUCKET_NAME
+        import datetime
+
+        # We need to find the date folder. Use Twilio API to get call date.
+        try:
+            call = twilio_client.calls(call_sid).fetch()
+            if not call.start_time:
+                 raise HTTPException(status_code=404, detail="Call start time not found, maybe recording not ready")
+            date_str = call.start_time.date().isoformat()
+        except Exception as e:
+             logger.error(f"Twilio error fetch call: {e}")
+             # Fallback: try to find the file if possible, or fail?
+             # For now, let's assume if Twilio fails, we can't find the folder easily without scanning.
+             raise HTTPException(status_code=404, detail="Call not found in Twilio logs")
+
+        
+        storage_client = storage.Client.from_service_account_json(KEY_FILE)
+        bucket = storage_client.bucket(BUCKET_NAME)
+        
+        blob_name = f"grabaciones/{date_str}/{call_sid}.wav"
+        blob = bucket.blob(blob_name)
+        
+        if not blob.exists():
+            raise HTTPException(status_code=404, detail="Recording audio not found")
+            
+        def iterfile():
+            with blob.open("rb") as f:
+                yield from f
+                
+        return StreamingResponse(iterfile(), media_type="audio/wav")
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to stream recording: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/calls/{call_sid}/transcription")
+async def get_call_transcription(call_sid: str):
+    """
+    Proxy transcription JSON from GCS.
+    """
+    try:
+        from google.cloud import storage
+        from recorder import KEY_FILE, BUCKET_NAME
+        
+        storage_client = storage.Client.from_service_account_json(KEY_FILE)
+        bucket = storage_client.bucket(BUCKET_NAME)
+        
+        blob_name = f"transcripciones/{call_sid}.json"
+        blob = bucket.blob(blob_name)
+        
+        if not blob.exists():
+            raise HTTPException(status_code=404, detail="Transcription not found")
+            
+        content = blob.download_as_text()
+        return Response(content=content, media_type="application/json")
+        
+    except Exception as e:
+        logger.error(f"Failed to fetch transcription: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/voice")
 async def voice_handler(request: Request):
 

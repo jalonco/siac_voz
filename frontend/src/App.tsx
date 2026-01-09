@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Phone, Loader2, PhoneCall, Mic, Activity, BarChart3, History, DollarSign, Timer, ArrowUpRight, ArrowDownLeft, Play, User, Globe, Users, Plus, Trash2 } from 'lucide-react';
+import { Phone, Loader2, PhoneCall, Mic, Activity, BarChart3, History, DollarSign, Timer, ArrowUpRight, ArrowDownLeft, Play, User, Globe, Users, Plus, Trash2, ArrowLeft, FileText } from 'lucide-react';
 import clsx from 'clsx';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import Editor from 'react-simple-code-editor';
@@ -8,6 +8,8 @@ import { highlight, languages } from 'prismjs/components/prism-core';
 import 'prismjs/components/prism-clike';
 import 'prismjs/components/prism-javascript';
 import 'prismjs/themes/prism-dark.css'; // Or custom style
+import { AudioPlayer } from './components/AudioPlayer';
+import { TranscriptionView } from './components/TranscriptionView';
 
 // Custom highlighter for variables
 const highlightWithVariables = (code: string) => {
@@ -57,6 +59,9 @@ function App() {
   // Analytics State
   const [calls, setCalls] = useState<CallLog[]>([]);
   const [loadingCalls, setLoadingCalls] = useState(false);
+  const [selectedCall, setSelectedCall] = useState<CallLog | null>(null);
+  const [transcription, setTranscription] = useState<any[]>([]);
+  const [loadingTranscription, setLoadingTranscription] = useState(false);
 
   // Agents State
   const [agents, setAgents] = useState<Agent[]>([]);
@@ -184,6 +189,24 @@ function App() {
       alert("Error al eliminar agente");
     }
   }
+
+  const fetchTranscription = async (callSid: string) => {
+    setLoadingTranscription(true);
+    setTranscription([]);
+    try {
+      const res = await axios.get(`${API_URL}/calls/${callSid}/transcription`);
+      setTranscription(res.data);
+    } catch (err) {
+      console.error("Failed to fetch transcription", err);
+    } finally {
+      setLoadingTranscription(false);
+    }
+  };
+
+  const handleViewCall = (call: CallLog) => {
+    setSelectedCall(call);
+    fetchTranscription(call.sid);
+  };
 
   const handleCall = async () => {
     if (!phoneNumber) return;
@@ -395,132 +418,185 @@ function App() {
 
         {activeTab === 'analytics' && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold">Rendimiento de Llamadas</h2>
-              <button onClick={fetchCalls} className="p-2 hover:bg-slate-800 rounded-full transition-colors">
-                <History className={clsx("w-5 h-5 text-slate-400", loadingCalls && "animate-spin")} />
-              </button>
-            </div>
+            {selectedCall ? (
+              <div className="space-y-6">
+                <button
+                  onClick={() => setSelectedCall(null)}
+                  className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
+                >
+                  <ArrowLeft className="w-4 h-4" /> Volver al listado
+                </button>
 
-            {/* Metrics Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="glass-panel p-6 rounded-2xl border border-slate-700/50">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-blue-500/20 rounded-xl text-blue-400">
-                    <PhoneCall className="w-6 h-6" />
-                  </div>
+                <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-slate-400 text-sm font-medium">Total Llamadas</p>
-                    <h3 className="text-2xl font-bold">{totalCalls}</h3>
+                    <h2 className="text-2xl font-bold flex items-center gap-3">
+                      <span className={clsx(
+                        "px-3 py-1 rounded-full text-sm font-medium border",
+                        selectedCall.direction === 'outbound-api'
+                          ? "bg-blue-500/10 border-blue-500/20 text-blue-400"
+                          : "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
+                      )}>
+                        {selectedCall.direction === 'outbound-api' ? 'Saliente' : 'Entrante'}
+                      </span>
+                      <span>{selectedCall.to}</span>
+                    </h2>
+                    <p className="text-slate-500 mt-1 flex items-center gap-2">
+                      <History className="w-3 h-3" />
+                      {selectedCall.start_time ? new Date(selectedCall.start_time).toLocaleString() : 'Fecha desconocida'}
+                    </p>
                   </div>
                 </div>
-              </div>
 
-              <div className="glass-panel p-6 rounded-2xl border border-slate-700/50">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-emerald-500/20 rounded-xl text-emerald-400">
-                    <Timer className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <p className="text-slate-400 text-sm font-medium">Duración Total</p>
-                    <h3 className="text-2xl font-bold">{Math.floor(totalDuration / 60)}m {totalDuration % 60}s</h3>
-                  </div>
-                </div>
-              </div>
+                <AudioPlayer url={`${API_URL}/calls/${selectedCall.sid}/recording`} />
 
-              <div className="glass-panel p-6 rounded-2xl border border-slate-700/50">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-purple-500/20 rounded-xl text-purple-400">
-                    <DollarSign className="w-6 h-6" />
+                {loadingTranscription ? (
+                  <div className="p-12 flex justify-center">
+                    <Loader2 className="w-8 h-8 animate-spin text-cyan-400" />
                   </div>
-                  <div>
-                    <p className="text-slate-400 text-sm font-medium">Costo Estimado</p>
-                    <h3 className="text-2xl font-bold">${totalCost.toFixed(4)}</h3>
+                ) : (
+                  <TranscriptionView entries={transcription} startTime={selectedCall.start_time || undefined} />
+                )}
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between">
+                  <h2 className="text-2xl font-bold">Rendimiento de Llamadas</h2>
+                  <button onClick={fetchCalls} className="p-2 hover:bg-slate-800 rounded-full transition-colors">
+                    <History className={clsx("w-5 h-5 text-slate-400", loadingCalls && "animate-spin")} />
+                  </button>
+                </div>
+
+                {/* Metrics Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="glass-panel p-6 rounded-2xl border border-slate-700/50">
+                    <div className="flex items-center gap-4">
+                      <div className="p-3 bg-blue-500/20 rounded-xl text-blue-400">
+                        <PhoneCall className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <p className="text-slate-400 text-sm font-medium">Total Llamadas</p>
+                        <h3 className="text-2xl font-bold">{totalCalls}</h3>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="glass-panel p-6 rounded-2xl border border-slate-700/50">
+                    <div className="flex items-center gap-4">
+                      <div className="p-3 bg-emerald-500/20 rounded-xl text-emerald-400">
+                        <Timer className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <p className="text-slate-400 text-sm font-medium">Duración Total</p>
+                        <h3 className="text-2xl font-bold">{Math.floor(totalDuration / 60)}m {totalDuration % 60}s</h3>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="glass-panel p-6 rounded-2xl border border-slate-700/50">
+                    <div className="flex items-center gap-4">
+                      <div className="p-3 bg-purple-500/20 rounded-xl text-purple-400">
+                        <DollarSign className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <p className="text-slate-400 text-sm font-medium">Costo Estimado</p>
+                        <h3 className="text-2xl font-bold">${totalCost.toFixed(4)}</h3>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Chart */}
-              <div className="glass-panel p-6 rounded-2xl border border-slate-700/50 lg:col-span-1">
-                <h3 className="font-semibold mb-6 flex items-center gap-2">
-                  <BarChart3 className="w-4 h-4 text-cyan-400" />
-                  Estado de Llamada
-                </h3>
-                <div className="h-64 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData}>
-                      <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 12 }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fill: '#94a3b8', fontSize: 12 }} axisLine={false} tickLine={false} />
-                      <Tooltip
-                        contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px' }}
-                        itemStyle={{ color: '#fff' }}
-                      />
-                      <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                        {chartData.map((_, index) => (
-                          <Cell key={`cell-${index}`} fill={['#3b82f6', '#10b981', '#ef4444', '#f59e0b'][index % 4]} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Chart */}
+                  <div className="glass-panel p-6 rounded-2xl border border-slate-700/50 lg:col-span-1">
+                    <h3 className="font-semibold mb-6 flex items-center gap-2">
+                      <BarChart3 className="w-4 h-4 text-cyan-400" />
+                      Estado de Llamada
+                    </h3>
+                    <div className="h-64 w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={chartData}>
+                          <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 12 }} axisLine={false} tickLine={false} />
+                          <YAxis tick={{ fill: '#94a3b8', fontSize: 12 }} axisLine={false} tickLine={false} />
+                          <Tooltip
+                            contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px' }}
+                            itemStyle={{ color: '#fff' }}
+                          />
+                          <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                            {chartData.map((_, index) => (
+                              <Cell key={`cell-${index}`} fill={['#3b82f6', '#10b981', '#ef4444', '#f59e0b'][index % 4]} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
 
-              {/* Table */}
-              <div className="glass-panel p-0 rounded-2xl border border-slate-700/50 lg:col-span-2 overflow-hidden">
-                <div className="p-6 border-b border-white/5">
-                  <h3 className="font-semibold">Registros Recientes</h3>
+                  {/* Table */}
+                  <div className="glass-panel p-0 rounded-2xl border border-slate-700/50 lg:col-span-2 overflow-hidden">
+                    <div className="p-6 border-b border-white/5">
+                      <h3 className="font-semibold">Registros Recientes</h3>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-sm text-slate-400">
+                        <thead className="bg-slate-900/50 text-slate-200 uppercase tracking-wider text-xs">
+                          <tr>
+                            <th className="px-6 py-4 font-medium">Estado</th>
+                            <th className="px-6 py-4 font-medium">Fecha</th>
+                            <th className="px-6 py-4 font-medium">A/De</th>
+                            <th className="px-6 py-4 font-medium">Duración</th>
+                            <th className="px-6 py-4 font-medium text-right">Costo</th>
+                            <th className="px-6 py-4 font-medium text-right">Acciones</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5">
+                          {calls.map((call) => (
+                            <tr key={call.sid} className="hover:bg-white/5 transition-colors">
+                              <td className="px-6 py-4">
+                                <span className={clsx(
+                                  "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize",
+                                  call.status === 'completed' ? "bg-emerald-500/10 text-emerald-400" :
+                                    call.status === 'failed' || call.status === 'busy' ? "bg-red-500/10 text-red-400" :
+                                      "bg-blue-500/10 text-blue-400"
+                                )}>
+                                  {call.status}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4">
+                                {call.start_time ? new Date(call.start_time).toLocaleString() : '-'}
+                              </td>
+                              <td className="px-6 py-4">
+                                <div className="flex flex-col">
+                                  <span className="text-white flex items-center gap-1">
+                                    {call.direction === 'outbound-api' ? <ArrowUpRight className="w-3 h-3 text-blue-400" /> : <ArrowDownLeft className="w-3 h-3 text-emerald-400" />}
+                                    {call.to}
+                                  </span>
+                                  <span className="text-xs opacity-50">{call.from}</span>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 font-mono">
+                                {call.duration}s
+                              </td>
+                              <td className="px-6 py-4 text-right font-mono">
+                                {call.price ? `$${Math.abs(parseFloat(call.price)).toFixed(4)}` : '-'}
+                              </td>
+                              <td className="px-6 py-4 text-right">
+                                <button
+                                  onClick={() => handleViewCall(call)}
+                                  className="p-2 hover:bg-slate-700/50 rounded-lg text-cyan-400 hover:text-cyan-300 transition-colors"
+                                  title="Ver detalles y grabación"
+                                >
+                                  <FileText className="w-4 h-4" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                 </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm text-slate-400">
-                    <thead className="bg-slate-900/50 text-slate-200 uppercase tracking-wider text-xs">
-                      <tr>
-                        <th className="px-6 py-4 font-medium">Estado</th>
-                        <th className="px-6 py-4 font-medium">Fecha</th>
-                        <th className="px-6 py-4 font-medium">A/De</th>
-                        <th className="px-6 py-4 font-medium">Duración</th>
-                        <th className="px-6 py-4 font-medium text-right">Costo</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/5">
-                      {calls.map((call) => (
-                        <tr key={call.sid} className="hover:bg-white/5 transition-colors">
-                          <td className="px-6 py-4">
-                            <span className={clsx(
-                              "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize",
-                              call.status === 'completed' ? "bg-emerald-500/10 text-emerald-400" :
-                                call.status === 'failed' || call.status === 'busy' ? "bg-red-500/10 text-red-400" :
-                                  "bg-blue-500/10 text-blue-400"
-                            )}>
-                              {call.status}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4">
-                            {call.start_time ? new Date(call.start_time).toLocaleString() : '-'}
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="flex flex-col">
-                              <span className="text-white flex items-center gap-1">
-                                {call.direction === 'outbound-api' ? <ArrowUpRight className="w-3 h-3 text-blue-400" /> : <ArrowDownLeft className="w-3 h-3 text-emerald-400" />}
-                                {call.to}
-                              </span>
-                              <span className="text-xs opacity-50">{call.from}</span>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 font-mono">
-                            {call.duration}s
-                          </td>
-                          <td className="px-6 py-4 text-right font-mono">
-                            {call.price ? `$${Math.abs(parseFloat(call.price)).toFixed(4)}` : '-'}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
+              </>
+            )}
           </div>
         )}
 
