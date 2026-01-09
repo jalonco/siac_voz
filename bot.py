@@ -125,6 +125,7 @@ async def run_bot(websocket: WebSocket, stream_sid: str, call_sid: str, call_var
     # Initialize Silence Timeout (50s)
     silence_timeout = SilenceTimeout(timeout=50)
 
+    pipeline = Pipeline(
         [
             transport.input(),
             # silence_timeout, # Check for user silence immediately after transport input
@@ -132,6 +133,7 @@ async def run_bot(websocket: WebSocket, stream_sid: str, call_sid: str, call_var
             transcript_logger, # Logs frames from LLM (content) and user (transcriptions)
             transport.output(),
         ]
+    )
     )
 
     task = PipelineTask(
